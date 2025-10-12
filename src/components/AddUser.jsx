@@ -1,53 +1,47 @@
-// src/AddUser.jsx
-
 import React, { useState } from 'react';
-import axios from 'axios';
 
-const AddUser = ({ onUserAdded }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+function AddUser({ formData, setFormData, editingUser, onSubmit, onCancel }) {
+  const [errors, setErrors] = useState({});
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = "Tên không được để trống";
+    if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email không hợp lệ";
+    return newErrors;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const newUser = { name, email };
-
-    axios.post("http://localhost:3000/users", newUser)
-      .then(response => {
-        onUserAdded(response.data);
-        setName('');
-        setEmail('');
-      })
-      .catch(error => console.error("Lỗi khi thêm user:", error));
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    onSubmit(e);
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Thêm User mới</h2>
-      
-      {/* Bọc mỗi input trong một thẻ div */}
-      <div>
-        <input
-          type="text"
-          placeholder="Tên"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-      </div>
-
-      <div>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
-
-      <button type="submit">Thêm</button>
+    <form onSubmit={handleSubmit} className="form">
+      <h2>{editingUser ? 'Cập nhật User' : 'Thêm User mới'}</h2>
+      <label>
+        Tên
+        <input type="text" name="name" value={formData.name} onChange={handleInputChange} />
+        {errors.name && <p className="error">{errors.name}</p>}
+      </label>
+      <label>
+        Email
+        <input type="email" name="email" value={formData.email} onChange={handleInputChange} />
+        {errors.email && <p className="error">{errors.email}</p>}
+      </label>
+      <button type="submit" className="btn">{editingUser ? 'Lưu thay đổi' : 'Thêm User'}</button>
+      {editingUser && <button type="button" className="btn btn-secondary" onClick={onCancel}>Hủy</button>}
     </form>
   );
-};
+}
 
 export default AddUser;
