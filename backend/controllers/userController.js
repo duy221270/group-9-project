@@ -1,6 +1,7 @@
-// userController.js - Cập nhật dùng MongoDB
+// userController.js - Phiên bản đã sửa
 
-const User = require('../models/User'); // Import User model từ Mongoose
+// 1. Chỉ import duy nhất User model từ đúng vị trí
+const User = require('../models/User'); // hoặc ../models/user
 
 // GET: Lấy tất cả user
 const getAllUsers = async (req, res) => {
@@ -27,7 +28,7 @@ const createUser = async (req, res) => {
   }
 };
 
-// === MỚI: Controller để cập nhật user ===
+// PUT: Cập nhật user
 const updateUser = async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(
@@ -44,7 +45,7 @@ const updateUser = async (req, res) => {
   }
 };
 
-// === MỚI: Controller để xóa user ===
+// DELETE: Xóa user
 const deleteUser = async (req, res) => {
   try {
     const deletedUser = await User.findByIdAndDelete(req.params.id);
