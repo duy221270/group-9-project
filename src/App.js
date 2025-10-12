@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import UserList from './components/UserList';
 import AddUser from './components/AddUser';
-import './App.css';
+import './App.css'; // File CSS bạn vừa gửi
 
 const API_URL = 'http://localhost:3000/users';
 
 function App() {
   const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({ name: '', email: '' });
-  const [editingUser, setEditingUser] = useState(null); // State để quản lý việc sửa
+  const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -29,10 +29,8 @@ function App() {
       try {
         await axios.delete(`${API_URL}/${userId}`);
         setUsers(users.filter(user => user._id !== userId));
-        alert("Xóa user thành công!");
       } catch (error) {
         console.error("Lỗi khi xóa user:", error);
-        alert("Xóa user thất bại!");
       }
     }
   };
@@ -45,24 +43,18 @@ function App() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (editingUser) {
-      // Logic CẬP NHẬT
       try {
         const response = await axios.put(`${API_URL}/${editingUser._id}`, formData);
         setUsers(users.map(user => (user._id === editingUser._id ? response.data : user)));
-        alert("Cập nhật user thành công!");
       } catch (error) {
         console.error("Lỗi khi cập nhật user:", error);
-        alert("Cập nhật user thất bại!");
       }
     } else {
-      // Logic THÊM MỚI
       try {
         const response = await axios.post(API_URL, formData);
         setUsers([...users, response.data]);
-        alert("Thêm user thành công!");
       } catch (error) {
         console.error("Lỗi khi thêm user:", error);
-        alert("Thêm user thất bại!");
       }
     }
     setFormData({ name: '', email: '' });
@@ -75,21 +67,29 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <h1>Quản Lý User</h1>
-      <AddUser
-        formData={formData}
-        setFormData={setFormData}
-        editingUser={editingUser}
-        onSubmit={handleFormSubmit}
-        onCancel={cancelEdit}
-      />
-      <hr />
-      <UserList
-        users={users}
-        onEdit={handleEditClick}
-        onDelete={handleDelete}
-      />
+    <div className="container">
+      <div className="header">
+        <h1>Quản Lý User</h1>
+        <p className="subtitle">Hoàn thiện CRUD với React & Node.js</p>
+      </div>
+      <div className="grid">
+        <div className="card">
+          <AddUser
+            formData={formData}
+            setFormData={setFormData}
+            editingUser={editingUser}
+            onSubmit={handleFormSubmit}
+            onCancel={cancelEdit}
+          />
+        </div>
+        <div className="card">
+          <UserList
+            users={users}
+            onEdit={handleEditClick}
+            onDelete={handleDelete}
+          />
+        </div>
+      </div>
     </div>
   );
 }

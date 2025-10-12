@@ -4,27 +4,25 @@ function UserList({ users, onEdit, onDelete }) {
   return (
     <div>
       <h2>Danh sách User</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Tên</th>
-            <th>Email</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
+      {users.length > 0 ? (
+        <ul className="list">
           {users.map(user => (
-            <tr key={user._id}>
-              <td>{user.name}</td>
-              <td>{user.email}</td>
-              <td>
-                <button className="edit-btn" onClick={() => onEdit(user)}>Sửa</button>
-                <button className="delete-btn" onClick={() => onDelete(user._id)}>Xóa</button>
-              </td>
-            </tr>
+            <li key={user._id} className="list-item">
+              <div className="avatar">{user.name.charAt(0).toUpperCase()}</div>
+              <div>
+                <div className="name">{user.name}</div>
+                <div className="email">{user.email}</div>
+              </div>
+              <div className="list-item-buttons">
+                <button className="btn btn-sm edit-btn" onClick={() => onEdit(user)}>Sửa</button>
+                <button className="btn btn-sm delete-btn" onClick={() => onDelete(user._id)}>Xóa</button>
+              </div>
+            </li>
           ))}
-        </tbody>
-      </table>
+        </ul>
+      ) : (
+        <p className="muted">Không có người dùng nào.</p>
+      )}
     </div>
   );
 }
