@@ -1,29 +1,32 @@
 // File: backend/server.js
-
 const express = require('express');
-const mongoose = require('mongoose'); // 1. Import Mongoose
+const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const cors = require('cors'); // THÊM: import cors
+
+// Import các file routes
 const userRoutes = require('./routes/user.js');
+const authRoutes = require('./routes/authRoutes.js'); // THÊM: import authRoutes
 
 dotenv.config();
 const app = express();
 
+// Sử dụng middleware
+app.use(cors()); // THÊM: để cho phép frontend gọi
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000; // Nên dùng port 5000 để tránh trùng React
 
-// 2. Sử dụng các routes
-app.use('/api', userRoutes);
+// Sử dụng các routes với tiền tố rõ ràng
+app.use('/api/auth', authRoutes); // API cho đăng ký, đăng nhập
+app.use('/api/users', userRoutes); // API cho quản lý (dùng sau)
 
-// 3. Kết nối với MongoDB
-// Best practice: Chỉ khởi động server sau khi kết nối DB thành công
+// Kết nối với MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    // Bắt đầu lắng nghe request
     app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
   })
   .catch((error) => {
-    // Bắt lỗi nếu không kết nối được
     console.error('❌ Connection error:', error.message);
   });
