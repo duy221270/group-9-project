@@ -1,19 +1,14 @@
-// File: backend/models/User.js
+import mongoose from "mongoose";
 
-const mongoose = require('mongoose');
-
-// Định nghĩa cấu trúc (Schema) cho User
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    avatar: { type: String, default: "" },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-});
+  { timestamps: true }
+);
 
-// Tạo và export Model từ Schema đã định nghĩa
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model("User", userSchema);
