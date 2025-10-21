@@ -1,18 +1,21 @@
+// File: backend/routes/user.js
+
 const express = require('express');
 const router = express.Router();
 
-// Import controller để xử lý logic
+// Import các hàm xử lý từ controller
 const {
   getAllUsers,
   createUser,
+  updateUser,
+  deleteUser,
 } = require('../controllers/userController.js');
 
-// Định nghĩa các đường dẫn
-// GET /api/users
+// Định nghĩa các đường dẫn (routes)
 router.get('/users', getAllUsers);
-
-// POST /api/users
 router.post('/users', createUser);
+router.put('/users/:id', updateUser);
+router.delete('/users/:id', deleteUser);
 
-// Xuất router để server.js có thể dùng
+// Chỉ export duy nhất router
 module.exports = router;

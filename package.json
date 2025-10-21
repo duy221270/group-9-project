@@ -24,7 +24,25 @@
     "extends": ["react-app","react-app/jest"]
   },
   "browserslist": {
+<<<<<<< HEAD
     "production": [">0.2%","not dead","not op_mini all"],
     "development": ["last 1 chrome version","last 1 firefox version","last 1 safari version"]
   }
 }
+=======
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+     "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+  "dependencies": { 
+    "cors": "^2.8.5"
+  }
+}
+>>>>>>> origin/main
