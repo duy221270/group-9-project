@@ -7,6 +7,7 @@ function UserList({ users, onEdit, onDelete }) {
       {users.length > 0 ? (
         <ul className="list">
           {users.map(user => (
+            // Giả định backend trả về _id (MongoDB default)
             <li key={user._id} className="list-item">
               <div className="avatar">{user.name.charAt(0).toUpperCase()}</div>
               <div>

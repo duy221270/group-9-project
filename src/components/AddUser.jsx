@@ -22,7 +22,7 @@ function AddUser({ formData, setFormData, editingUser, onSubmit, onCancel }) {
       return;
     }
     setErrors({});
-    onSubmit(e);
+    onSubmit(e); // Gọi hàm submit từ App.js
   };
 
   return (
@@ -39,7 +39,7 @@ function AddUser({ formData, setFormData, editingUser, onSubmit, onCancel }) {
         {errors.email && <p className="error">{errors.email}</p>}
       </label>
       <button type="submit" className="btn">{editingUser ? 'Lưu thay đổi' : 'Thêm User'}</button>
-      {editingUser && <button type="button" className="btn btn-secondary" onClick={onCancel}>Hủy</button>}
+      {editingUser && <button typeD="button" className="btn btn-secondary" onClick={onCancel}>Hủy</button>}
     </form>
   );
 }
