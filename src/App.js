@@ -1,160 +1,136 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 
-// Import các component
+// Import components/pages
 import UserList from './components/UserList';
 import AddUser from './components/AddUser';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import Profile from './pages/Profile';
 
-import './App.css'; // File CSS dark mode của bạn
+import './App.css'; // File CSS dark mode
 
-// --- ĐỊA CHỈ API (Đã đổi thành đường dẫn tương đối để dùng Proxy) ---
-const USERS_API_URL = '/users';
+// --- ĐỊA CHỈ API (Đã sửa lại USERS_API_URL) ---
+const USERS_API_URL = '/api/users/users'; // <-- ĐÃ SỬA
 const AUTH_API_URL = '/api/auth';
+const PROFILE_API_URL = '/api/users/profile'; // Giữ nguyên URL profile
 
 function App() {
-  // === STATE CHO AUTHENTICATION ===
   const [token, setToken] = useState(localStorage.getItem('token'));
-
-  // === STATE CHO CRUD USER ===
+  // State CRUD User
   const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
-    // Nếu có token, thì tải danh sách user
     if (token) {
-      fetchUsers();
+      fetchUsers(); // Tải user list nếu đã đăng nhập
+    } else {
+      setUsers([]); // Xóa user list nếu đăng xuất
     }
-  }, [token]); // Chạy lại khi token thay đổi
+  }, [token]);
 
-  // === CÁC HÀM XỬ LÝ CHO CRUD USER ===
+  // Các hàm CRUD User (sử dụng USERS_API_URL đã sửa)
   const fetchUsers = async () => {
     try {
-      // Gửi token theo header để xác thực
-      const config = {
-        headers: { 'x-auth-token': token }
-      };
-      const response = await axios.get(USERS_API_URL, config);
+      const config = { headers: { 'Authorization': `Bearer ${token}` } };
+      const response = await axios.get(USERS_API_URL, config); // Dùng USERS_API_URL mới
       setUsers(response.data);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách user:", error);
-      // Nếu token hết hạn hoặc sai, tự động đăng xuất
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
          handleLogout();
       }
     }
   };
-
   const handleDelete = async (userId) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa user này?')) {
+     if (window.confirm('Bạn có chắc chắn muốn xóa user này?')) {
       try {
-        await axios.delete(`${USERS_API_URL}/${userId}`, {
-          headers: { 'x-auth-token': token }
-        });
-        setUsers(users.filter(user => user._id !== userId));
-      } catch (error) {
-        console.error("Lỗi khi xóa user:", error);
-      }
+        // Sửa cả URL delete
+        await axios.delete(`${USERS_API_URL}/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } }); 
+        setUsers(users.filter(user => user._id !== userId)); // Dùng _id nếu backend trả về _id
+      } catch (error) { console.error("Lỗi khi xóa user:", error); }
     }
   };
-
-  const handleEditClick = (user) => {
-    setEditingUser(user);
-    setFormData({ name: user.name, email: user.email });
-  };
-
+  const handleEditClick = (user) => { setEditingUser(user); setFormData({ name: user.name, email: user.email }); };
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    const config = { headers: { 'x-auth-token': token } };
-
-    if (editingUser) { // Logic SỬA
+    const config = { headers: { 'Authorization': `Bearer ${token}` } };
+    if (editingUser) {
       try {
-        const response = await axios.put(`${USERS_API_URL}/${editingUser._id}`, formData, config);
-        setUsers(users.map(user => (user._id === editingUser._id ? response.data : user)));
-      } catch (error) {
-        console.error("Lỗi khi cập nhật user:", error);
-      }
-    } else { // Logic THÊM MỚI
+        // Sửa cả URL update
+        const response = await axios.put(`${USERS_API_URL}/${editingUser._id}`, formData, config); 
+        setUsers(users.map(user => (user._id === editingUser._id ? response.data : user))); // Dùng _id nếu backend trả về _id
+      } catch (error) { console.error("Lỗi khi cập nhật user:", error); }
+    } else {
       try {
-        const response = await axios.post(USERS_API_URL, formData, config);
+        // Sửa cả URL create
+        const response = await axios.post(USERS_API_URL, formData, config); 
         setUsers([...users, response.data]);
-      } catch (error) {
-        console.error("Lỗi khi thêm user:", error);
-      }
+      } catch (error) { console.error("Lỗi khi thêm user:", error); }
     }
-    setFormData({ name: '', email: '' });
-    setEditingUser(null);
+    setFormData({ name: '', email: '' }); setEditingUser(null);
   };
+  const cancelEdit = () => { setEditingUser(null); setFormData({ name: '', email: '' }); };
 
-  const cancelEdit = () => {
-    setEditingUser(null);
-    setFormData({ name: '', email: '' });
-  };
+  // Các hàm Auth
+  const handleLoginSuccess = (newToken) => { localStorage.setItem('token', newToken); setToken(newToken); };
+  const handleLogout = () => { localStorage.removeItem('token'); setToken(null); };
 
-  // === CÁC HÀM XỬ LÝ CHO AUTHENTICATION ===
-  const handleLoginSuccess = (newToken) => {
-    localStorage.setItem('token', newToken);
-    setToken(newToken); // Cập nhật state, làm React render lại
-  };
+  // Helper Component cho Route yêu cầu đăng nhập
+  const PrivateRoute = ({ children }) => token ? children : <Navigate to="/login" replace />;
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setToken(null); // Cập nhật state, làm React render lại
-  };
-
-  // === PHẦN HIỂN THỊ (RENDER) ===
-
-  // 1. Nếu CHƯA ĐĂNG NHẬP (không có token)
-  if (!token) {
-    return (
+  return (
+    <Router>
       <div className="container">
         <div className="header">
-          <h1>Chào mừng!</h1>
-          <p className="subtitle">Vui lòng đăng nhập hoặc đăng ký</p>
+          <h1>Quản Lý User</h1>
+          <nav style={{ marginBottom: '20px' }}> {/* Thanh điều hướng */}
+            {token ? (
+              <>
+                <Link to="/" style={{ marginRight: '15px', color: 'var(--accent)' }}>Quản lý User</Link>
+                <Link to="/profile" style={{ marginRight: '15px', color: 'var(--text)' }}>Profile</Link>
+                <button onClick={handleLogout} className="btn btn-sm" style={{ background: 'var(--danger)' }}>Đăng xuất</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" style={{ marginRight: '15px', color: 'var(--text)' }}>Đăng nhập</Link>
+                <Link to="/register" style={{ marginRight: '15px', color: 'var(--text)' }}>Đăng ký</Link>
+              </>
+            )}
+          </nav>
         </div>
-        <div className="grid">
-          <div className="card">
-            {/* Truyền hàm onLoginSuccess và authApiUrl xuống cho Login */}
-            <Login onLoginSuccess={handleLoginSuccess} authApiUrl={AUTH_API_URL} />
-          </div>
-          <div className="card">
-            {/* Truyền authApiUrl xuống cho Register */}
-            <Register authApiUrl={AUTH_API_URL} />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  // 2. Nếu ĐÃ ĐĂNG NHẬP (có token)
-  return (
-    <div className="container">
-      <div className="header">
-        <h1>Quản Lý User</h1>
-        <p className="subtitle">Bạn đã đăng nhập thành công!</p>
-        <button onClick={handleLogout} className="btn" style={{marginTop: '15px', background: 'var(--danger)'}}>Đăng xuất</button>
+        <Routes> {/* Định nghĩa các Route */}
+          {/* Trang Login: Chỉ hiện khi chưa đăng nhập */}
+          <Route path="/login" element={ !token ? <div className="card" style={{ maxWidth: '400px', margin: 'auto' }}><Login onLoginSuccess={handleLoginSuccess} authApiUrl={AUTH_API_URL} /></div> : <Navigate to="/" replace /> } />
+
+          {/* Trang Register: Chỉ hiện khi chưa đăng nhập */}
+          <Route path="/register" element={ !token ? <div className="card" style={{ maxWidth: '400px', margin: 'auto' }}><Register authApiUrl={AUTH_API_URL} /></div> : <Navigate to="/" replace /> } />
+
+          {/* Trang Profile: Yêu cầu đăng nhập */}
+          <Route path="/profile" element={ <PrivateRoute><div className="card"><Profile profileApiUrl={PROFILE_API_URL} token={token} onLogout={handleLogout} /></div></PrivateRoute> } />
+
+          {/* Trang Quản lý User (Trang chủ): Yêu cầu đăng nhập */}
+          <Route path="/" element={
+            <PrivateRoute>
+              <div className="grid">
+                <div className="card">
+                  <AddUser formData={formData} setFormData={setFormData} editingUser={editingUser} onSubmit={handleFormSubmit} onCancel={cancelEdit} />
+                </div>
+                <div className="card">
+                  <UserList users={users} onEdit={handleEditClick} onDelete={handleDelete} />
+                </div>
+              </div>
+            </PrivateRoute>
+          } />
+
+          {/* Redirect mặc định */}
+          <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
+        </Routes>
       </div>
-      <div className="grid">
-        <div className="card">
-          <AddUser
-            formData={formData}
-            setFormData={setFormData}
-            editingUser={editingUser}
-            onSubmit={handleFormSubmit}
-            onCancel={cancelEdit}
-          />
-        </div>
-        <div className="card">
-          <UserList
-            users={users}
-            onEdit={handleEditClick}
-            onDelete={handleDelete}
-          />
-        </div>
-      </div>
-    </div>
+    </Router>
   );
 }
 
