@@ -31,3 +31,14 @@ exports.protect = async (req, res, next) => {
     res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
+exports.admin = (req, res, next) => {
+  // Hàm này PHẢI chạy SAU hàm 'protect',
+  // vì nó cần 'req.user' mà hàm 'protect' đã cung cấp.
+  
+  if (req.user && req.user.role === 'admin') {
+    next(); // Nếu là admin, cho phép đi tiếp
+  } else {
+    // 403 Forbidden - Bị cấm (khác với 401 Unauthorized - chưa xác thực)
+    res.status(403).json({ message: 'Not authorized as an admin' });
+  }
+};
