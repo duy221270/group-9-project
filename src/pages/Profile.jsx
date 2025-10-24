@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// API URL (đã sửa lại cho đúng với backend)
-const PROFILE_API_URL = '/api/users/profile'; // <-- ĐÃ SỬA
+// API URL (đường dẫn tương đối)
+const PROFILE_API_URL = '/api/users/profile';
 
 function Profile({ token, onLogout }) { // Nhận token và onLogout từ App.js
   const [userData, setUserData] = useState(null);
@@ -12,33 +12,32 @@ function Profile({ token, onLogout }) { // Nhận token và onLogout từ App.js
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!token) {
+      if (!token) { // Kiểm tra token trước
         setMessage('Bạn cần đăng nhập.');
         setLoading(false);
         return;
       }
+      setLoading(true);
+      setMessage('');
       try {
-        // --- SỬA Ở ĐÂY ---
-        const config = {
-          headers: {
-            'Authorization': `Bearer ${token}` // Sửa header
-          }
-        };
-        const response = await axios.get(PROFILE_API_URL, config); // Dùng URL đã sửa
+        const config = { headers: { 'Authorization': `Bearer ${token}` } };
+        // Gọi API thật
+        const response = await axios.get(PROFILE_API_URL, config);
         setUserData(response.data);
         setNameInput(response.data.name);
-        setLoading(false);
       } catch (error) {
         console.error("Lỗi khi lấy thông tin profile:", error);
         setMessage('Không thể tải thông tin profile.');
-        setLoading(false);
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
           onLogout(); // Gọi hàm logout từ App.js nếu token không hợp lệ
         }
+      } finally {
+         setLoading(false);
       }
     };
     fetchProfile();
-  }, [token, onLogout]); // Thêm dependencies
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]); // Chạy lại khi token thay đổi
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -51,22 +50,19 @@ function Profile({ token, onLogout }) { // Nhận token và onLogout từ App.js
     }
 
     try {
-      // --- SỬA Ở ĐÂY ---
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}` // Sửa header
-        }
-      };
-      const response = await axios.put(PROFILE_API_URL, { name: nameInput }, config); // Dùng URL đã sửa
-      setUserData(response.data);
+      const config = { headers: { 'Authorization': `Bearer ${token}` } };
+      // Gọi API thật
+      const response = await axios.put(PROFILE_API_URL, { name: nameInput }, config);
+      setUserData(response.data); // Cập nhật state với dữ liệu mới từ backend
       setMessage('Cập nhật thông tin thành công!');
+      setTimeout(() => setMessage(''), 3000); // Tự ẩn thông báo
     } catch (error) {
       console.error("Lỗi khi cập nhật profile:", error);
       setMessage(error.response?.data?.message || 'Cập nhật thất bại.');
     }
   };
 
-  if (loading) return <p className="muted">Đang tải...</p>; // Bỏ card vì đã có ở App.js
+  if (loading) return <p className="muted">Đang tải...</p>; // Bỏ card
   if (!userData) return <p className="error">{message || 'Không có dữ liệu.'}</p>; // Bỏ card
 
   return (
