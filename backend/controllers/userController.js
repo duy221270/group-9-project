@@ -2,6 +2,7 @@
 
 // 1. Chỉ import duy nhất User model từ đúng vị trí
 const User = require('../models/User'); // hoặc ../models/user
+const bcrypt = require('bcryptjs');
 
 // GET: Lấy tất cả user
 const getAllUsers = async (req, res) => {
@@ -57,10 +58,60 @@ const deleteUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const getUserProfile = async (req, res) => {
+  // Middleware 'protect' đã chạy và gắn req.user
+  const user = req.user;
+
+  if (user) {
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      // avatar: user.avatar (nếu có)
+    });
+  } else {
+    res.status(404).json({ message: 'User not found' });
+  }
+};
+
+// @desc    Cập nhật thông tin profile người dùng (đã đăng nhập)
+// @route   PUT /api/users/profile
+// @access  Private
+const updateUserProfile = async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    // Lấy dữ liệu mới từ body
+    const { name, password } = req.body;
+
+    user.name = name || user.name;
+    // user.avatar = req.body.avatar || user.avatar; (cho Hoạt động 4)
+
+    // Nếu người dùng gửi mật khẩu mới -> mã hóa nó
+    if (password) {
+      user.password = await bcrypt.hash(password, 12);
+    }
+
+    const updatedUser = await user.save();
+
+    // Trả về thông tin đã cập nhật
+    res.json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+    });
+  } else {
+    res.status(404).json({ message: 'User not found' });
+  }
+};
 
 module.exports = {
   getAllUsers,
   createUser,
   updateUser,
   deleteUser,
+  getUserProfile,   // <-- Mới
+  updateUserProfile, // <-- Mới
 };
