@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 // Định nghĩa cấu trúc (Schema) cho User
 const userSchema = new mongoose.Schema(
   {
+    // --- Các trường chính ---
     name: {
       type: String,
       required: true,
@@ -14,21 +15,27 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    // Bổ sung: trường password để lưu mật khẩu đã mã hóa
     password: {
       type: String,
       required: true,
     },
-    // Bổ sung: trường role để phân quyền
     role: {
       type: String,
-      enum: ['user', 'admin'], // Chỉ cho phép 2 giá trị này
-      default: 'user',        // Mặc định là user thường
+      enum: ['user', 'admin'],
+      default: 'user',
     },
+    // --- Trường avatar (Hoạt động 4) ---
+    avatar: {
+      type: String,
+      default: 'https://res.cloudinary.com/demo/image/upload/w_150,h_150,c_fill,g_face/sample.jpg' // URL mặc định ví dụ
+    },
+    // --- Các trường reset mật khẩu (Hoạt động 4) ---
+    passwordResetToken: String,
+    passwordResetExpires: Date,
   },
   {
-    // Bổ sung: tự động thêm createdAt và updatedAt
-    timestamps: true,
+    // --- Tùy chọn timestamps ---
+    timestamps: true, // Tự động thêm createdAt và updatedAt
   }
 );
 
