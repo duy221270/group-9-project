@@ -20,13 +20,15 @@ const PORT = process.env.PORT || 5000; // Nên dùng port 5000 để tránh trù
 // Sử dụng các routes với tiền tố rõ ràng
 app.use('/api/auth', authRoutes); // API cho đăng ký, đăng nhập
 app.use('/api/users', userRoutes); // API cho quản lý (dùng sau)
+// Cấu hình avatar
+require('./config/cloudinary');
 
 // Kết nối với MongoDB
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('✅ Connected to MongoDB');
-    app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
-  })
-  .catch((error) => {
-    console.error('❌ Connection error:', error.message);
-  });
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+  })
+  .catch((error) => {
+    console.error('❌ Connection error:', error.message);
+  });

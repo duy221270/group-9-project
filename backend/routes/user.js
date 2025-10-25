@@ -5,6 +5,7 @@ const router = express.Router();
 
 // 1. Import cả 'protect' và 'admin'
 const { protect, admin } = require('../middleware/authMiddleware');
+const { uploadAvatar: uploadAvatarMiddleware } = require('../middleware/uploadMiddleware'); // Import middleware upload
 
 // 2. Import các hàm controllers (giữ nguyên)
 const {
@@ -14,6 +15,7 @@ const {
   deleteUser,
   getUserProfile,
   updateUserProfile,
+  uploadAvatar
 } = require('../controllers/userController.js');
 
 // --- Routes cá nhân (Hoạt động 2 - Giữ nguyên) ---
@@ -22,6 +24,7 @@ router
   .get(protect, getUserProfile)
   .put(protect, updateUserProfile);
 
+router.post('/upload-avatar', protect, uploadAvatarMiddleware, uploadAvatar);
 // --- Routes ADMIN (Hoạt động 3 - CẬP NHẬT) ---
 // Thêm [protect, admin] vào trước hàm controller.
 // Yêu cầu: Phải đăng nhập (protect) VÀ phải là admin (admin).

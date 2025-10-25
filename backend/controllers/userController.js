@@ -3,6 +3,7 @@
 // 1. Chỉ import duy nhất User model từ đúng vị trí
 const User = require('../models/User'); // hoặc ../models/user
 const bcrypt = require('bcryptjs');
+const cloudinary = require('../config/cloudinary');
 
 // GET: Lấy tất cả user
 const getAllUsers = async (req, res) => {
@@ -11,6 +12,55 @@ const getAllUsers = async (req, res) => {
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+const uploadAvatar = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id); // Lấy user từ middleware protect
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Kiểm tra xem có file được upload không (middleware multer thêm req.file)
+    if (!req.file) {
+      return res.status(400).json({ message: 'Vui lòng chọn file ảnh.' });
+    }
+    console.log('Cloudinary object:', cloudinary);
+    console.log('Cloudinary uploader object:', cloudinary.uploader);
+    // Upload file lên Cloudinary từ buffer trong bộ nhớ
+    // Dùng stream để upload hiệu quả hơn với file lớn
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'avatars', // Tùy chọn: thư mục lưu trên Cloudinary
+        public_id: `${user._id}_${Date.now()}`, // Tên file duy nhất
+        overwrite: true, // Ghi đè nếu file đã tồn tại
+        format: 'jpg', // Tự động chuyển đổi sang jpg
+        transformation: [{ width: 150, height: 150, crop: 'fill', gravity: 'face' }] // Resize ảnh
+      },
+      async (error, result) => {
+        if (error) {
+          console.error('Cloudinary Upload Error:', error);
+          return res.status(500).json({ message: 'Lỗi khi upload ảnh.' });
+        }
+
+        // Upload thành công, cập nhật link ảnh vào user
+        user.avatar = result.secure_url; // Lấy URL an toàn (https)
+        await user.save();
+
+        res.status(200).json({
+          message: 'Upload avatar thành công!',
+          avatarUrl: result.secure_url,
+        });
+      }
+    );
+
+    // Gửi buffer của file ảnh vào stream để upload
+    uploadStream.end(req.file.buffer);
+
+  } catch (error) {
+    console.error('Avatar Upload Controller Error:', error);
+    res.status(500).json({ message: 'Lỗi server khi upload avatar.' });
   }
 };
 
@@ -114,4 +164,5 @@ module.exports = {
   deleteUser,
   getUserProfile,   // <-- Mới
   updateUserProfile, // <-- Mới
+  uploadAvatar, // <-- Hàm mới
 };
