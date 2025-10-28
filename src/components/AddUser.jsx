@@ -1,47 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import api from "../api/axiosConfig";
 
-function AddUser({ formData, setFormData, editingUser, onSubmit, onCancel }) {
-  const [errors, setErrors] = useState({});
+export default function AddUser({ onSuccess }) {
+  const [form, setForm] = useState({ name: "", email: "" });
+  const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const validate = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = "Tên không được để trống";
-    if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email không hợp lệ";
-    return newErrors;
-  };
-
-  const handleSubmit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
+    try {
+      setLoading(true);
+      // ✅ CHỈ '/users'
+      await api.post("/users", form);
+      setForm({ name: "", email: "" });
+      onSuccess && onSuccess(); // cho AdminUserList reload
+    } catch (err) {
+      console.error("Lỗi thêm user:", err);
+      alert("Thêm user thất bại.");
+    } finally {
+      setLoading(false);
     }
-    setErrors({});
-    onSubmit(e); // Gọi hàm submit từ App.js
   };
 
   return (
-    <form onSubmit={handleSubmit} className="form">
-      <h2>{editingUser ? 'Cập nhật User' : 'Thêm User mới'}</h2>
-      <label>
-        Tên
-        <input type="text" name="name" value={formData.name} onChange={handleInputChange} />
-        {errors.name && <p className="error">{errors.name}</p>}
-      </label>
-      <label>
-        Email
-        <input type="email" name="email" value={formData.email} onChange={handleInputChange} />
-        {errors.email && <p className="error">{errors.email}</p>}
-      </label>
-      <button type="submit" className="btn">{editingUser ? 'Lưu thay đổi' : 'Thêm User'}</button>
-      {editingUser && <button typeD="button" className="btn btn-secondary" onClick={onCancel}>Hủy</button>}
-    </form>
+    <>
+      <h2>Thêm User mới</h2>
+      <form onSubmit={submit} className="form">
+        <label>
+          Tên
+          <input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
+        </label>
+        <label>
+          Email
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
+        </label>
+        <button className="btn" disabled={loading}>
+          {loading ? "Đang thêm..." : "Thêm User"}
+        </button>
+      </form>
+    </>
   );
 }
-
-export default AddUser;

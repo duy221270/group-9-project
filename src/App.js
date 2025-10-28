@@ -1,148 +1,134 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import React, { useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+  Link,
+  useNavigate,
+} from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  selectIsAuthenticated,
+  selectUser,
+  setLogout,
+  setLogin,
+} from "./store/authSlice";
+import api from "./api/axiosConfig";
 
-// ========== COMPONENT / PAGE IMPORTS ==========
-// !!! QUAN TRỌNG: Đảm bảo MỖI file dưới đây đều có "export default TênComponent;" ở cuối !!!
-import AddUser from './components/AddUser';         // Check AddUser.js
-import Register from './pages/Register';           // Check Register.jsx
-import Login from './pages/Login';                 // Check Login.jsx
-import Profile from './pages/Profile';               // Check Profile.jsx
-import AdminUserList from './pages/AdminUserList'; // Check AdminUserList.jsx
-import ForgotPassword from './pages/ForgotPassword'; // Check ForgotPassword.jsx
-import ResetPassword from './pages/ResetPassword';   // Check ResetPassword.jsx
-import './App.css';
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+import Profile from "./pages/Profile";
+import AdminUserList from "./pages/AdminUserList";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import "./App.css";
 
-// ========== API URLs ==========
-// Nên đặt trong file config riêng hoặc biến môi trường nếu dự án lớn hơn
-const USERS_API_URL = '/api/users/users'; // URL lấy/thêm user (cho admin)
-const AUTH_API_URL = '/api/auth';       // URL cho login, register, forgot/reset password
-const PROFILE_API_URL = '/api/users/profile'; // URL lấy/cập nhật thông tin user hiện tại
+// --- helper parse JSON an toàn
+const safeParse = (text) => {
+  try {
+    if (!text || typeof text !== "string") return null;
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
 
 function App() {
-  // ========== STATE ==========
-  const [token, setToken] = useState(localStorage.getItem('token')); // Lấy token từ localStorage khi tải app
-  const [currentUser, setCurrentUser] = useState(null); // Thông tin user đang đăng nhập
-  const [formData, setFormData] = useState({ name: '', email: '' }); // Dữ liệu form thêm user (cho admin)
-  const [refreshUserList, setRefreshUserList] = useState(false); // Biến để trigger load lại danh sách user admin
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const currentUser = useSelector(selectUser);
 
-  // ========== EFFECTS ==========
-  // Chạy khi component mount hoặc khi `token` thay đổi
+  // Bootstrap Redux state từ localStorage (an toàn)
   useEffect(() => {
-    const currentToken = localStorage.getItem('token');
-    setToken(currentToken); // Cập nhật state token (có thể không cần nếu chỉ đọc từ localStorage?)
-
-    if (currentToken) {
-      fetchCurrentUser(currentToken); // Nếu có token, lấy thông tin user
-    } else {
-      setCurrentUser(null); // Nếu không có token, xóa thông tin user
+    const savedUser = safeParse(localStorage.getItem("user"));
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (savedUser && accessToken) {
+      dispatch(
+        setLogin({
+          user: savedUser,
+          accessToken,
+          refreshToken: refreshToken || null,
+        })
+      );
     }
-  }, [token]); // Phụ thuộc vào `token` state
+  }, [dispatch]);
 
-  // ========== FUNCTIONS ==========
-  // Lấy thông tin user đang đăng nhập bằng token
-  const fetchCurrentUser = async (currentToken) => {
-    if (!currentToken) {
-      setCurrentUser(null);
-      return;
-    }
-    try {
-      const config = { headers: { Authorization: `Bearer ${currentToken}` } };
-      const res = await axios.get(PROFILE_API_URL, config);
-      setCurrentUser(res.data); // Lưu thông tin user vào state
-    } catch (err) {
-      console.error('Lỗi khi lấy user hiện tại:', err);
-      handleLogout(); // Nếu token lỗi/hết hạn, tự động đăng xuất
-    }
+  // Nút Đăng xuất
+  const LogoutButton = () => {
+    const navigate = useNavigate();
+    const handleLogout = async () => {
+      try {
+        await api.post("/auth/logout", {
+          refreshToken: localStorage.getItem("refreshToken"),
+        });
+      } catch (err) {
+        console.warn(
+          "API logout báo lỗi (bỏ qua):",
+          err?.response?.data || err.message
+        );
+      } finally {
+        dispatch(setLogout());
+        navigate("/login");
+      }
+    };
+    return (
+      <button
+        onClick={handleLogout}
+        className="btn btn-sm"
+        style={{ background: "var(--danger)" }}
+      >
+        Đăng xuất
+      </button>
+    );
   };
 
-  // Xử lý submit form thêm user (Admin)
-  const handleAddUserSubmit = async (e) => {
-    e.preventDefault();
-    const config = { headers: { Authorization: `Bearer ${token}` } }; // Cần token để xác thực
-    try {
-      await axios.post(USERS_API_URL, formData, config);
-      alert('Thêm user thành công!');
-      setFormData({ name: '', email: '' });       // Reset form
-      setRefreshUserList((prev) => !prev);   // Trigger load lại danh sách user
-    } catch (err) {
-      console.error('Lỗi thêm user:', err);
-      alert(err.response?.data?.message || 'Thêm user thất bại.'); // Hiển thị lỗi từ backend
-    }
-  };
+  // Route guards
+  const PrivateRoute = ({ children }) =>
+    isAuthenticated ? children : <Navigate to="/login" replace />;
 
-  // Hủy thêm user (Admin) - chỉ reset form
-  const cancelAddUserEdit = () => setFormData({ name: '', email: '' });
-
-  // Callback khi Login component đăng nhập thành công
-  const handleLoginSuccess = (newToken) => {
-    localStorage.setItem('token', newToken); // Lưu token mới vào localStorage
-    setToken(newToken);                    // Cập nhật state token -> trigger useEffect -> fetchCurrentUser
-  };
-
-  // Xử lý đăng xuất
-  const handleLogout = () => {
-    localStorage.removeItem('token'); // Xóa token khỏi localStorage
-    setToken(null);                   // Cập nhật state token -> trigger useEffect -> setCurrentUser(null)
-  };
-
-  // ========== ROUTE PROTECTION COMPONENTS ==========
-  // Component HOC (Higher-Order Component) để bảo vệ route yêu cầu đăng nhập
-  const PrivateRoute = ({ children }) => {
-    // Nếu có token -> render component con (children)
-    // Nếu không -> chuyển hướng về trang login
-    return token ? children : <Navigate to="/login" replace />;
-  };
-
-  // Component HOC để bảo vệ route yêu cầu quyền admin
   const AdminRoute = ({ children }) => {
-    // Đợi thông tin currentUser được load xong mới kiểm tra role
-    if (!currentUser && token) {
-      return <div>Đang tải thông tin người dùng...</div>; // Hoặc một spinner loading
-    }
-    // Nếu có token VÀ role là admin -> render component con
-    // Nếu không -> chuyển hướng về trang chủ (hoặc trang profile)
-    return token && currentUser?.role === 'admin' ? children : <Navigate to="/" replace />;
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    if (!currentUser) return <div className="card">Đang tải thông tin...</div>;
+    return currentUser.role === "admin" ? (
+      children
+    ) : (
+      <Navigate to="/" replace />
+    );
   };
 
-  // ========== JSX RENDER ==========
   return (
     <Router>
       <div className="container">
-        {/* --- HEADER & NAVIGATION --- */}
+        {/* HEADER */}
         <div className="header">
           <h1>Quản Lý User</h1>
-          <nav style={{ marginBottom: '20px' }}>
-            {token ? (
-              // Menu khi đã đăng nhập
+          <nav style={{ marginBottom: "20px" }}>
+            {isAuthenticated ? (
               <>
-                <Link to="/" style={{ marginRight: '15px', color: 'var(--text)' }}>
+                <Link to="/" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Profile
                 </Link>
-                {/* Chỉ hiện link Admin Users nếu user là admin */}
-                {currentUser?.role === 'admin' && (
-                  <Link to="/admin/users" style={{ marginRight: '15px', color: 'orange' }}>
+                {currentUser?.role === "admin" && (
+                  <Link
+                    to="/admin/users"
+                    style={{ marginRight: "15px", color: "orange" }}
+                  >
                     Admin Users
                   </Link>
                 )}
-                <button
-                  onClick={handleLogout}
-                  className="btn btn-sm"
-                  style={{ background: 'var(--danger)' }}
-                >
-                  Đăng xuất
-                </button>
+                <LogoutButton />
               </>
             ) : (
-              // Menu khi chưa đăng nhập
               <>
-                <Link to="/login" style={{ marginRight: '15px', color: 'var(--text)' }}>
+                <Link to="/login" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Đăng nhập
                 </Link>
-                <Link to="/register" style={{ marginRight: '15px', color: 'var(--text)' }}>
+                <Link to="/register" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Đăng ký
                 </Link>
-                <Link to="/forgot-password" style={{ color: 'var(--accent)' }}>
+                <Link to="/forgot-password" style={{ color: "var(--accent)" }}>
                   Quên mật khẩu
                 </Link>
               </>
@@ -150,97 +136,53 @@ function App() {
           </nav>
         </div>
 
-        {/* --- PAGE CONTENT BASED ON ROUTE --- */}
+        {/* ROUTES */}
         <Routes>
-          {/* Public Route: Login */}
+          {/* Public */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route
-            path="/login"
-            element={
-              !token ? ( // Chỉ hiện khi chưa login
-                <div className="card" style={{ maxWidth: '400px', margin: 'auto' }}>
-                  <Login onLoginSuccess={handleLoginSuccess} authApiUrl={AUTH_API_URL} />
-                </div>
-              ) : (
-                <Navigate to="/" replace /> // Chuyển về trang chủ nếu đã login
-              )
-            }
-          />
-          {/* Public Route: Register */}
-          <Route
-            path="/register"
-            element={
-              !token ? ( // Chỉ hiện khi chưa login
-                <div className="card" style={{ maxWidth: '400px', margin: 'auto' }}>
-                  <Register authApiUrl={AUTH_API_URL} />
-                </div>
-              ) : (
-                <Navigate to="/" replace /> // Chuyển về trang chủ nếu đã login
-              )
-            }
-          />
-          {/* Public Route: Forgot Password */}
-          <Route
-            path="/forgot-password"
-            element={<ForgotPassword apiUrl={AUTH_API_URL} />} // Luôn cho phép truy cập
-          />
-          {/* Public Route: Reset Password */}
-          <Route
-            path="/reset-password/:resetToken" // Nhận token từ URL
-            element={<ResetPassword apiUrl={AUTH_API_URL} />} // Luôn cho phép truy cập
+            path="/reset-password/:resetToken"
+            element={<ResetPassword />}
           />
 
-          {/* Private Route: Profile (Trang chủ khi đã login) */}
+          {/* Private */}
           <Route
             path="/"
             element={
-              <PrivateRoute> {/* Yêu cầu đăng nhập */}
+              <PrivateRoute>
                 <div className="card">
-                  <Profile
-                    profileApiUrl={PROFILE_API_URL}
-                    token={token} // Truyền token xuống để Profile tự gọi API update
-                    onLogout={handleLogout} // Có thể cần nếu Profile có nút logout riêng?
-                  />
+                  <Profile />
                 </div>
               </PrivateRoute>
             }
           />
-          {/* Redirect /profile về / */}
-          <Route path="/profile" element={<Navigate to="/" replace />} />
 
-          {/* Admin Route: User Management */}
+          {/* Admin */}
           <Route
             path="/admin/users"
             element={
-              <AdminRoute> {/* Yêu cầu đăng nhập và quyền admin */}
-                <div className="grid"> {/* Layout 2 cột nếu muốn */}
-                  <div className="card"> {/* Form thêm user */}
-                    <AddUser
-                      formData={formData}
-                      setFormData={setFormData}
-                      editingUser={null} // Chỉ dùng để thêm mới ở đây
-                      onSubmit={handleAddUserSubmit}
-                      onCancel={cancelAddUserEdit}
-                    />
-                  </div>
-                  <div className="card"> {/* Danh sách user */}
-                    <AdminUserList
-                      token={token} // Cần token để gọi API lấy danh sách/xóa user
-                      currentUser={currentUser} // Để biết user admin hiện tại là ai (không xóa chính mình?)
-                      key={refreshUserList} // Dùng key để re-render component khi có thay đổi
-                      usersApiUrl={USERS_API_URL}
-                    />
-                  </div>
+              <AdminRoute>
+                {/* ✅ Chỉ hiển thị danh sách user, KHÔNG còn AddUser */}
+                <div className="card">
+                  <AdminUserList currentUser={currentUser} />
                 </div>
               </AdminRoute>
             }
           />
 
-          {/* Fallback Route: Chuyển hướng nếu URL không khớp */}
-          <Route path="*" element={<Navigate to={token ? '/' : '/login'} replace />} />
+          {/* Fallback */}
+          <Route
+            path="*"
+            element={
+              <Navigate to={isAuthenticated ? "/" : "/login"} replace />
+            }
+          />
         </Routes>
       </div>
     </Router>
   );
 }
 
-export default App; // Đảm bảo khớp với cách import trong file src/index.js
+export default App;
