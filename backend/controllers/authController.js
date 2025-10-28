@@ -1,10 +1,17 @@
 // File: backend/controllers/authController.js
 const User = require('../models/User');
+const RefreshToken = require('../models/RefreshToken');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-
+const generateAccessToken = (user) => {
+  return jwt.sign(
+    { userId: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN } // Ví dụ: 15m
+  );
+};
 // 1. Chức năng Đăng ký (Sign Up)
 exports.signup = async (req, res) => {
   const { name, email, password } = req.body;
@@ -32,7 +39,6 @@ exports.signup = async (req, res) => {
   }
 };
 
-// 2. Chức năng Đăng nhập (Login)
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -41,21 +47,84 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng.' });
     }
 
-    // So sánh mật khẩu
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng.' });
     }
 
-    // Tạo và trả về JWT token
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+    // 1. Tạo Access Token (ngắn hạn)
+    const accessToken = generateAccessToken(user);
+
+    // 2. Tạo Refresh Token (dài hạn)
+    const refreshTokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 ngày
+    const refreshTokenString = jwt.sign(
+      { userId: user._id }, // Chỉ cần ID trong refresh token
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN } // Ví dụ: 7d
     );
 
-    res.status(200).json({ token, userId: user._id, name: user.name });
+    // 3. (Task 3) Lưu Refresh Token vào DB
+    await RefreshToken.create({
+      user: user._id,
+      token: refreshTokenString,
+      expiresAt: refreshTokenExpires,
+    });
+
+    // 4. Trả về cả 2 token cho SV2
+    res.status(200).json({
+      message: 'Đăng nhập thành công',
+      accessToken,
+      refreshToken: refreshTokenString,
+      userId: user._id,
+      name: user.name,
+    });
+
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+exports.refreshAccessToken = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'Refresh Token không được cung cấp.' });
+  }
+
+  try {
+    // 1. Kiểm tra xem Refresh Token có trong DB không
+    const storedToken = await RefreshToken.findOne({ token: refreshToken });
+
+    if (!storedToken) {
+      return res.status(403).json({ message: 'Refresh Token không hợp lệ hoặc đã hết hạn.' });
+    }
+
+    // 2. Kiểm tra token có hết hạn (trong DB) không
+    if (new Date() > storedToken.expiresAt) {
+      await RefreshToken.findByIdAndDelete(storedToken._id); // Xóa token hết hạn
+      return res.status(403).json({ message: 'Refresh Token đã hết hạn. Vui lòng đăng nhập lại.' });
+    }
+
+    // 3. Xác thực chữ ký JWT của Refresh Token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // 4. Lấy thông tin user
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+    }
+
+    // 5. Cấp Access Token MỚI
+    const newAccessToken = generateAccessToken(user);
+
+    res.status(200).json({ accessToken: newAccessToken });
+
+  } catch (error) {
+    // Nếu JWT verify lỗi (VD: sai secret) hoặc token hết hạn (theo 'expiresIn')
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      // Xóa token lỗi/hết hạn khỏi DB (nếu tìm thấy)
+      await RefreshToken.deleteOne({ token: refreshToken });
+      return res.status(403).json({ message: 'Refresh Token không hợp lệ. Vui lòng đăng nhập lại.' });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -147,7 +216,24 @@ exports.resetPassword = async (req, res) => {
 };
 
 // 3. Chức năng Đăng xuất (Logout)
-exports.logout = (req, res) => {
-  // Logic chính xử lý ở client, backend chỉ cần phản hồi
-  res.status(200).json({ message: 'Đăng xuất thành công.' });
+exports.logout = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({ message: 'Refresh Token không được cung cấp.' });
+  }
+
+  try {
+    // Xóa Refresh Token khỏi DB
+    const result = await RefreshToken.deleteOne({ token: refreshToken });
+
+    if (result.deletedCount === 0) {
+      // Token không tồn tại, nhưng vẫn cho logout thành công
+      return res.status(200).json({ message: 'Đăng xuất thành công (token không tìm thấy).' });
+    }
+
+    res.status(200).json({ message: 'Đăng xuất thành công.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
