@@ -1,16 +1,27 @@
 // File: backend/routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
-// 1. Import thêm 2 hàm controller mới
-const { signup, login, logout, forgotPassword, resetPassword } = require('../controllers/authController.js');
+
+// 1. Import thêm hàm controller mới
+const {
+  signup,
+  login,
+  logout,
+  forgotPassword,
+  resetPassword,
+  refreshAccessToken, // <-- HÀM MỚI
+} = require('../controllers/authController.js');
 
 // --- Các route cũ ---
 router.post('/signup', signup);
 router.post('/login', login);
-router.post('/logout', logout);
+router.post('/logout', logout); // Route này đã đúng (POST) để nhận body
 
-// --- ROUTES MỚI CHO HOẠT ĐỘNG 4 ---
+// --- ROUTE MỚI CHO HOẠT ĐỘNG 1 ---
+router.post('/refresh', refreshAccessToken); // <-- ROUTE MỚI
+
+// --- Routes cho Hoạt động 4 (Giữ nguyên) ---
 router.post('/forgot-password', forgotPassword);
-router.put('/reset-password/:token', resetPassword); // Dùng PUT và nhận token qua URL params
+router.put('/reset-password/:token', resetPassword);
 
 module.exports = router;
