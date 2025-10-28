@@ -1,123 +1,205 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import '../App.css'; // Assuming styles are in App.css
+import React, { useEffect, useState } from "react";
+import api from "../api/axiosConfig";
 
-function AdminUserList({ token, currentUser, usersApiUrl, key }) { // Added key prop if using it for refresh
-  const [allUsers, setAllUsers] = useState([]);
-  const [message, setMessage] = useState('');
+export default function AdminUserList() {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(''); // Separate error state for clarity
+  const [msg, setMsg] = useState("");
+  const [newUser, setNewUser] = useState({ name: "", email: "" });
 
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-      if (!token) {
-        setError('Yêu cầu quyền Admin.');
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setMessage('');
-      setError(''); // Clear previous errors
-      try {
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        // Assuming usersApiUrl = '/api/users/users' as defined in App.js
-        const res = await axios.get(usersApiUrl, config);
-        setAllUsers(res.data);
-      } catch (err) {
-        console.error('Lỗi khi lấy danh sách user (Admin):', err);
-        setError(err.response?.data?.message || 'Không thể tải danh sách user (Yêu cầu quyền Admin).');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAllUsers();
-    // Dependency array should include things that trigger a re-fetch
-  }, [token, usersApiUrl, key]); // Removed currentUser unless specifically needed for fetching
+  // ⚙️ Kiểm tra backend là "/users" hay "/users/users"
+  const USERS_API = "/users/users";
 
-  const handleDeleteUser = async (id) => {
-    // Prevent admin from deleting themselves
-    if (currentUser?._id === id) {
-      alert('Bạn không thể xóa tài khoản Admin của chính mình.');
-      return;
-    }
-
-    // Use a custom modal in a real app instead of window.confirm
-    if (window.confirm('Bạn có chắc chắn muốn xóa user này?')) {
-      setMessage('');
-      setError('');
-      try {
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        // Assuming usersApiUrl = '/api/users/users' -> DELETE '/api/users/users/:id'
-        await axios.delete(`${usersApiUrl}/${id}`, config);
-
-        // Update state locally after successful deletion
-        setAllUsers(prevUsers => prevUsers.filter((u) => u._id !== id));
-
-        setMessage('Xóa user thành công!');
-        setTimeout(() => setMessage(''), 3000); // Clear message after 3 seconds
-      } catch (err) {
-        console.error('Lỗi khi xóa user (Admin):', err);
-        setError(err.response?.data?.message || 'Xóa user thất bại.');
-      }
+  // 🟢 Lấy danh sách user
+  const fetchAllUsers = async () => {
+    try {
+      const res = await api.get(USERS_API);
+      setUsers(res.data || []);
+    } catch (err) {
+      console.error("Lỗi lấy user:", err);
+      if (err.response?.status === 401)
+        setMsg("Không có quyền Admin hoặc thiếu token!");
+      else setMsg("Không thể tải danh sách người dùng.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <p className="muted">Đang tải danh sách user...</p>;
+  useEffect(() => {
+    fetchAllUsers();
+  }, []);
+
+  // 🟢 Thêm user
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email)
+      return setMsg("⚠️ Nhập đủ tên và email!");
+    try {
+      await api.post(USERS_API, newUser);
+      setMsg("✅ Thêm user thành công!");
+      setNewUser({ name: "", email: "" });
+      fetchAllUsers();
+    } catch (err) {
+      console.error("Lỗi thêm user:", err);
+      setMsg("❌ Không thể thêm user!");
+    }
+  };
+
+  // 🟢 Xoá user
+  const handleDelete = async (id) => {
+    if (!window.confirm("Xóa user này?")) return;
+    try {
+      await api.delete(`${USERS_API}/${id}`);
+      setUsers((prev) => prev.filter((u) => u._id !== id));
+      setMsg("Xóa user thành công!");
+      setTimeout(() => setMsg(""), 2000);
+    } catch (err) {
+      console.error("Lỗi xóa user:", err);
+      setMsg("❌ Xóa thất bại!");
+    }
+  };
+
+  if (loading) return <p>Đang tải danh sách...</p>;
 
   return (
-    <>
-      <h2>Quản lý Người dùng (Admin)</h2>
+    <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+      {/* KHUNG TRÁI */}
+      <div
+        style={{
+          width: "280px",
+          backgroundColor: "#1f2733",
+          padding: "20px",
+          borderRadius: "12px",
+          color: "white",
+        }}
+      >
+        <h3>Thêm User mới</h3>
+        <label>Tên</label>
+        <input
+          type="text"
+          placeholder="Nhập tên..."
+          value={newUser.name}
+          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+          style={{
+            width: "100%",
+            padding: "8px",
+            borderRadius: "6px",
+            background: "#0d1117",
+            color: "white",
+            border: "none",
+            marginTop: "4px",
+          }}
+        />
+        <label style={{ marginTop: "10px" }}>Email</label>
+        <input
+          type="email"
+          placeholder="Nhập email..."
+          value={newUser.email}
+          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+          style={{
+            width: "100%",
+            padding: "8px",
+            borderRadius: "6px",
+            background: "#0d1117",
+            color: "white",
+            border: "none",
+            marginTop: "4px",
+            marginBottom: "10px",
+          }}
+        />
+        <button
+          onClick={handleAddUser}
+          style={{
+            width: "100%",
+            backgroundColor: "#00d061",
+            color: "black",
+            fontWeight: "bold",
+            padding: "10px",
+            borderRadius: "8px",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Thêm User
+        </button>
+      </div>
 
-      {/* Display Success Message */}
-      {message && (
-        <p style={{ color: 'var(--accent)', textAlign: 'center' }}>{message}</p>
-      )}
+      {/* KHUNG PHẢI */}
+      <div
+        style={{
+          flex: 1,
+          backgroundColor: "#1f2733",
+          borderRadius: "12px",
+          padding: "20px",
+          color: "white",
+        }}
+      >
+        <h2>Quản lý Người dùng (Admin)</h2>
+        {msg && <p style={{ color: "#00e676" }}>{msg}</p>}
 
-      {/* Display Error Message */}
-      {error && (
-        <p style={{ color: 'var(--danger)', textAlign: 'center' }}>{error}</p>
-      )}
-
-      {allUsers.length > 0 ? (
-        <ul className="list">
-          {allUsers.map((user) => (
-            <li key={user._id} className="list-item">
-              <div
-                className="avatar"
-                style={{ background: user.role === 'admin' ? 'var(--danger)' : '#0f172a' }}
+        {users.length === 0 ? (
+          <p style={{ color: "#aaa" }}>Không có người dùng nào.</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {users.map((user) => (
+              <li
+                key={user._id}
+                style={{
+                  background: "#0d1117",
+                  marginBottom: "8px",
+                  borderRadius: "10px",
+                  padding: "10px 14px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
               >
-                {/* Display first char of name or email if name is missing */}
-                {(user.name || user.email || '?').charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="name">
-                  {user.name || 'N/A'}{' '}
-                  {user.role === 'admin' && (
-                    <span style={{ color: 'orange', fontSize: '0.8em' }}>(Admin)</span>
-                  )}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      backgroundColor: "#e53935",
+                      color: "#fff",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {(user.name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: "bold" }}>
+                      {user.name}{" "}
+                      {user.role === "admin" && (
+                        <span style={{ color: "orange", fontSize: 12 }}>
+                          (Admin)
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ color: "#aaa", fontSize: "13px" }}>{user.email}</div>
+                  </div>
                 </div>
-                <div className="email">{user.email}</div>
-              </div>
-              <div className="list-item-buttons">
                 <button
-                  className="btn btn-sm delete-btn" // Use appropriate class for styling
-                  onClick={() => handleDeleteUser(user._id)}
-                  // Disable delete button for the currently logged-in admin
-                  disabled={currentUser?._id === user._id}
-                  title={currentUser?._id === user._id ? "Không thể xóa chính mình" : "Xóa user"}
+                  onClick={() => handleDelete(user._id)}
+                  style={{
+                    backgroundColor: "#e53935",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                  }}
                 >
                   Xóa
                 </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        // Show "No users" only if not loading and no error occurred during fetch
-        !loading && !error && <p className="muted">Không có người dùng nào.</p>
-      )}
-    </>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
-
-export default AdminUserList;

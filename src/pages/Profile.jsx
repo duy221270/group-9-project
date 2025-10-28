@@ -1,274 +1,165 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import '../App.css'; // Assuming styles are in App.css
+// src/pages/Profile.jsx
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { selectUser, setLogin } from "../store/authSlice";
+import api, { API_ORIGIN } from "../api/axiosConfig";
 
-// No need for PROFILE_API_URL and UPLOAD_API_URL here if passed as props
-// const PROFILE_API_URL = '/api/users/profile';
-// const UPLOAD_API_URL = '/api/users/upload-avatar';
+const withBase = (url) => (url?.startsWith("http") ? url : url ? `${API_ORIGIN}${url}` : "");
 
-function Profile({ profileApiUrl, token, onLogout }) { // Receive props from App.js
-  const [userData, setUserData] = useState(null);
-  const [nameInput, setNameInput] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState(''); // Separate error state
-  const [loading, setLoading] = useState(true);
+function Profile() {
+  const dispatch = useDispatch();
+  const userFromStore = useSelector(selectUser);
+  const [userData, setUserData] = useState(userFromStore);
+  const [nameInput, setNameInput] = useState(userFromStore?.name || "");
+  const [message, setMessage] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [isUploading, setIsUploading] = useState(false); // Upload loading state
-  const [isUpdatingName, setIsUpdatingName] = useState(false); // Name update loading state
+  const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate(); // Hook for navigation
-
-  // Fetch user profile on component mount or when token changes
+  // Đồng bộ khi Redux thay đổi (vd. sau login khôi phục)
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!token) {
-        setError('Bạn cần đăng nhập.');
-        setLoading(false);
-        // Optionally navigate to login if token suddenly disappears
-        // navigate('/login');
-        return;
-      }
-      setLoading(true);
-      setMessage('');
-      setError('');
-      try {
-        // Use standard Authorization header
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        const res = await axios.get(profileApiUrl, config); // Use passed prop
-        setUserData(res.data);
-        setNameInput(res.data.name || ''); // Handle cases where name might be missing
-      } catch (err) {
-        console.error('Lỗi khi lấy thông tin profile:', err);
-        setError('Không thể tải thông tin profile.');
-        // Use navigate for smoother redirect on auth error
-        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-          // Call the onLogout function passed from App.js to clear state there too
-          if (onLogout) onLogout();
-          // Navigate will be handled by App.js's PrivateRoute or effect
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-    // Dependency includes token and profileApiUrl
-  }, [token, profileApiUrl, navigate, onLogout]); // Added navigate and onLogout dependencies
+    setUserData(userFromStore);
+    setNameInput(userFromStore?.name || "");
+  }, [userFromStore]);
 
-  // Update user name
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    if (!nameInput.trim()) {
-      setError('Tên mới không được để trống.');
-      return;
-    }
-    setMessage('');
-    setError('');
-    setIsUpdatingName(true);
+  const refreshProfile = async () => {
     try {
-      // Use standard Authorization header
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await axios.put(profileApiUrl, { name: nameInput }, config); // Use passed prop
-
-      // Update local state with response from backend
-      setUserData(prev => ({ ...prev, name: res.data.name })); // Assumes backend returns updated user fragment
-      setNameInput(res.data.name); // Ensure input reflects saved data
-
-      setMessage('Cập nhật tên thành công!');
-      setTimeout(() => setMessage(''), 3000); // Clear message after 3 seconds
+      const me = await api.get("/users/profile");
+      setUserData(me.data);
+      setNameInput(me.data?.name || "");
+      // Cập nhật Redux + localStorage để các chỗ khác dùng chung
+      const accessToken = localStorage.getItem("accessToken");
+      const refreshToken = localStorage.getItem("refreshToken");
+      dispatch(setLogin({ user: me.data, accessToken, refreshToken }));
+      localStorage.setItem("user", JSON.stringify(me.data));
     } catch (err) {
-      console.error('Lỗi khi cập nhật profile:', err);
-      setError(err.response?.data?.message || 'Cập nhật thất bại.');
+      console.error("Fetch profile error:", err);
+    }
+  };
+
+  // Update tên
+  const handleUpdateName = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await api.put("/users/profile", { name: nameInput });
+      setMessage("Cập nhật thông tin thành công!");
+      // Cập nhật lại store + localStorage
+      const newUser = { ...userData, name: res.data?.name || nameInput };
+      const accessToken = localStorage.getItem("accessToken");
+      const refreshToken = localStorage.getItem("refreshToken");
+      dispatch(setLogin({ user: newUser, accessToken, refreshToken }));
+      localStorage.setItem("user", JSON.stringify(newUser));
+      setUserData(newUser);
+    } catch (err) {
+      console.error(err);
+      setMessage(err.response?.data?.message || "Cập nhật thất bại.");
     } finally {
-      setIsUpdatingName(false);
+      setLoading(false);
     }
   };
 
-  // Handle file selection for avatar
-  const handleFileChange = (e) => {
-    const file = e.target.files ? e.target.files[0] : null;
-    if (file) {
-      // Basic validation (optional)
-      if (!file.type.startsWith('image/')) {
-        setError('Vui lòng chọn một file ảnh.');
-        setAvatarFile(null);
-        setPreview(null);
-        e.target.value = ''; // Reset file input
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) { // Example: 5MB limit
-         setError('Kích thước ảnh không được vượt quá 5MB.');
-         setAvatarFile(null);
-         setPreview(null);
-         e.target.value = ''; // Reset file input
-         return;
-      }
-
-      setError(''); // Clear previous error
-      setAvatarFile(file);
-      // Clean up previous preview object URL to prevent memory leaks
-      if (preview) {
-        URL.revokeObjectURL(preview);
-      }
-      setPreview(URL.createObjectURL(file)); // Create preview URL
-    } else {
-        setAvatarFile(null);
-        setPreview(null);
-    }
-  };
-
-   // Cleanup preview URL on component unmount
-   useEffect(() => {
-    return () => {
-      if (preview) {
-        URL.revokeObjectURL(preview);
-      }
-    };
-  }, [preview]);
-
-  // Handle avatar upload
-  const handleUploadAvatar = async () => {
+  // Upload avatar
+  const handleUpload = async () => {
     if (!avatarFile) {
-      alert('Hãy chọn ảnh trước!');
+      setMessage("Hãy chọn ảnh trước!");
       return;
     }
-    setMessage('');
-    setError('');
-    setIsUploading(true);
+    setLoading(true);
+    setMessage("");
     try {
       const formData = new FormData();
-      formData.append('avatar', avatarFile); // Key 'avatar' must match backend middleware
-
-      // Use standard Authorization header
-      const config = {
-        headers: {
-          'Content-Type': 'multipart/form-data', // Important for file uploads
-          Authorization: `Bearer ${token}`,
-        },
-      };
-
-      // Construct upload URL from profileApiUrl (assuming /upload-avatar is relative)
-      const uploadUrl = `${profileApiUrl.replace('/profile', '')}/upload-avatar`; // Adjust if needed
-      const res = await axios.post(uploadUrl, formData, config);
-      console.log('Avatar upload response:', res.data); // Log response to check
-
-      setMessage('Cập nhật avatar thành công!');
-      // *** ✅ SỬA Ở ĐÂY: Dùng res.data.avatarUrl thay vì res.data.avatar ***
-      setUserData(prev => ({ ...prev, avatar: res.data.avatarUrl }));
-      setAvatarFile(null); // Clear selected file
-      setPreview(null); // Clear preview
-      // Optionally reset the file input visually (might need useRef)
-      const fileInput = document.getElementById('avatar-input');
-      if (fileInput) fileInput.value = '';
-
-
-      setTimeout(() => setMessage(''), 3000);
+      formData.append("avatar", avatarFile);
+      const res = await api.post("/users/upload-avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const avatarUrl = res.data?.avatarUrl;
+      const newUser = { ...userData, avatar: avatarUrl };
+      // Cập nhật Redux + localStorage để giữ avatar sau reload
+      const accessToken = localStorage.getItem("accessToken");
+      const refreshToken = localStorage.getItem("refreshToken");
+      dispatch(setLogin({ user: newUser, accessToken, refreshToken }));
+      localStorage.setItem("user", JSON.stringify(newUser));
+      setUserData(newUser);
+      setMessage("Upload avatar thành công!");
     } catch (err) {
-      console.error('Lỗi khi upload avatar:', err);
-      setError(err.response?.data?.message || 'Upload thất bại.');
+      console.error(err);
+      setMessage(err.response?.data?.message || "Upload thất bại.");
     } finally {
-      setIsUploading(false);
+      setLoading(false);
     }
   };
 
+  if (!userData) return <p className="muted">Đang tải...</p>;
 
-  // Render loading state
-  if (loading) return <div className="card"><p className="muted">Đang tải...</p></div>;
+  const firstInitial = (userData.name || "?").charAt(0).toUpperCase();
+  const avatarSrc = userData.avatar ? withBase(userData.avatar) : "";
 
-  // Render message if user data couldn't be fetched (and not loading)
-  if (!userData) return <div className="card"><p className="error">{error || message || 'Không có dữ liệu.'}</p></div>;
-
-  // Render profile content
   return (
     <>
       <h2>Thông tin cá nhân</h2>
-      <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-        {/* Display Avatar */}
-        {userData.avatar ? (
+      <div style={{ textAlign: "center", marginBottom: 16 }}>
+        {avatarSrc ? (
           <img
-            src={userData.avatar} // Use avatar URL from userData state
+            src={avatarSrc}
             alt="Avatar"
-            style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', marginBottom: '10px', border: '2px solid var(--primary)' }}
-            // Add onError handler for broken image links
-            onError={(e) => { e.target.onerror = null; e.target.src="placeholder_image_url_or_default_avatar"; }}
+            onError={(e) => (e.currentTarget.style.display = "none")}
+            style={{ width: 120, height: 120, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--accent)" }}
           />
         ) : (
-          <div style={{
-            width: 120, height: 120, borderRadius: '50%',
-            backgroundColor: 'var(--secondary)', margin: 'auto', marginBottom: '10px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--muted)', fontSize: '2em', fontWeight: 'bold'
-          }}>
-            {(userData.name || '?').charAt(0).toUpperCase()} {/* Initial as fallback */}
+          <div
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: "50%",
+              background: "var(--secondary)",
+              margin: "0 auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: "bold",
+              fontSize: "2rem",
+              color: "var(--muted)",
+            }}
+          >
+            {firstInitial}
           </div>
         )}
-        <p><strong>Tên:</strong> {userData.name || 'N/A'}</p>
+
+        <p><strong>Tên:</strong> {userData.name}</p>
         <p><strong>Email:</strong> {userData.email}</p>
         {userData.role && <p><strong>Vai trò:</strong> {userData.role}</p>}
       </div>
 
-      <hr style={{ margin: '20px 0', borderColor: 'var(--secondary)' }} />
+      <hr style={{ margin: "16px 0", borderColor: "var(--secondary)" }} />
 
-      {/* Form Update Name */}
-      <form onSubmit={handleUpdateProfile} className="form">
+      <form onSubmit={handleUpdateName} className="form">
         <h3>Cập nhật tên</h3>
-        <input
-          type="text"
-          value={nameInput}
-          onChange={(e) => setNameInput(e.target.value)}
-          required
-          className="input"
-          disabled={isUpdatingName}
-        />
-        <button type="submit" className="btn" disabled={isUpdatingName}>
-          {isUpdatingName ? 'Đang lưu...' : 'Lưu thay đổi'}
-        </button>
+        <label>
+          Tên mới
+          <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} required />
+        </label>
+        <button className="btn" disabled={loading}>{loading ? "Đang lưu..." : "Lưu thay đổi"}</button>
       </form>
 
-      <hr style={{ margin: '20px 0', borderColor: 'var(--secondary)' }} />
+      <hr style={{ margin: "16px 0", borderColor: "var(--secondary)" }} />
 
-      {/* Upload Avatar Section */}
-      <div style={{ textAlign: 'center' }}>
+      <div style={{ textAlign: "center" }}>
         <h3>Upload Avatar</h3>
-        <input
-           id="avatar-input" // Add an ID for easier reset
-           type="file"
-           accept="image/*"
-           onChange={handleFileChange}
-           style={{ marginBottom: '10px' }}
-           disabled={isUploading}
-        />
-        {/* Image Preview */}
-        {preview && (
-          <div style={{ margin: '15px 0' }}>
-            <p className='muted'>Ảnh xem trước:</p>
-            <img
-              src={preview}
-              alt="Preview"
-              style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover' }}
-            />
-          </div>
-        )}
-        {/* Upload Button */}
-        {avatarFile && ( // Only show upload button if a file is selected
-            <button
-              onClick={handleUploadAvatar}
-              className="btn"
-              style={{ background: 'var(--accent)', marginTop: '10px' }}
-              disabled={isUploading}
-            >
-              {isUploading ? 'Đang tải lên...' : 'Tải ảnh lên'}
-            </button>
-        )}
+        <input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} />
+        <div style={{ marginTop: 10 }}>
+          <button className="btn" onClick={handleUpload} disabled={loading || !avatarFile}>
+            {loading ? "Đang tải..." : "Tải ảnh lên"}
+          </button>
+        </div>
       </div>
 
-      {/* Display Success/Error Messages */}
-      {message && <p style={{ marginTop: '15px', textAlign: 'center', color: 'var(--accent)' }}>{message}</p>}
-      {error && <p style={{ marginTop: '15px', textAlign: 'center', color: 'var(--danger)' }}>{error}</p>}
+      {message && <p style={{ marginTop: 12, textAlign: "center", color: "var(--accent)" }}>{message}</p>}
+
+      {/* Nếu muốn chắc ăn, sau khi mọi thao tác, có thể làm nút tải lại profile */}
+      {/* <button onClick={refreshProfile} className="btn btn-sm" style={{ marginTop: 12 }}>Tải lại profile</button> */}
     </>
   );
 }
 
 export default Profile;
-
