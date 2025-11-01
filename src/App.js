@@ -55,7 +55,7 @@ function App() {
     }
   }, [dispatch]);
 
-  // Nút Đăng xuất
+  // 🔹 Nút Đăng xuất
   const LogoutButton = () => {
     const navigate = useNavigate();
     const handleLogout = async () => {
@@ -84,14 +84,15 @@ function App() {
     );
   };
 
-  // Route guards
+  // 🔐 Route bảo vệ
   const PrivateRoute = ({ children }) =>
     isAuthenticated ? children : <Navigate to="/login" replace />;
 
+  // 🎯 AdminRoute cho cả admin và moderator
   const AdminRoute = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (!currentUser) return <div className="card">Đang tải thông tin...</div>;
-    return currentUser.role === "admin" ? (
+    return currentUser.role === "admin" || currentUser.role === "moderator" ? (
       children
     ) : (
       <Navigate to="/" replace />
@@ -107,10 +108,14 @@ function App() {
           <nav style={{ marginBottom: "20px" }}>
             {isAuthenticated ? (
               <>
-                <Link to="/" style={{ marginRight: "15px", color: "var(--text)" }}>
+                <Link
+                  to="/"
+                  style={{ marginRight: "15px", color: "var(--text)" }}
+                >
                   Profile
                 </Link>
-                {currentUser?.role === "admin" && (
+                {(currentUser?.role === "admin" ||
+                  currentUser?.role === "moderator") && (
                   <Link
                     to="/admin/users"
                     style={{ marginRight: "15px", color: "orange" }}
@@ -122,10 +127,16 @@ function App() {
               </>
             ) : (
               <>
-                <Link to="/login" style={{ marginRight: "15px", color: "var(--text)" }}>
+                <Link
+                  to="/login"
+                  style={{ marginRight: "15px", color: "var(--text)" }}
+                >
                   Đăng nhập
                 </Link>
-                <Link to="/register" style={{ marginRight: "15px", color: "var(--text)" }}>
+                <Link
+                  to="/register"
+                  style={{ marginRight: "15px", color: "var(--text)" }}
+                >
                   Đăng ký
                 </Link>
                 <Link to="/forgot-password" style={{ color: "var(--accent)" }}>
@@ -159,12 +170,11 @@ function App() {
             }
           />
 
-          {/* Admin */}
+          {/* Admin & Moderator */}
           <Route
             path="/admin/users"
             element={
               <AdminRoute>
-                {/* ✅ Chỉ hiển thị danh sách user, KHÔNG còn AddUser */}
                 <div className="card">
                   <AdminUserList currentUser={currentUser} />
                 </div>

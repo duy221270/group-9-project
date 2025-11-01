@@ -1,25 +1,27 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axiosConfig";
+import { useSelector } from "react-redux";
+import { selectUser } from "../store/authSlice";
 
 export default function AdminUserList() {
+  const currentUser = useSelector(selectUser);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
   const [newUser, setNewUser] = useState({ name: "", email: "" });
 
-  // ⚙️ Kiểm tra backend là "/users" hay "/users/users"
-  const USERS_API = "/users/users";
+  // ✅ Đường dẫn API chính xác
+  const USERS_API = "/users";
 
   // 🟢 Lấy danh sách user
   const fetchAllUsers = async () => {
     try {
       const res = await api.get(USERS_API);
       setUsers(res.data || []);
+      setMsg("");
     } catch (err) {
       console.error("Lỗi lấy user:", err);
-      if (err.response?.status === 401)
-        setMsg("Không có quyền Admin hoặc thiếu token!");
-      else setMsg("Không thể tải danh sách người dùng.");
+      setMsg("❌ Không thể tải danh sách người dùng (chưa đủ quyền hoặc lỗi server).");
     } finally {
       setLoading(false);
     }
@@ -29,10 +31,10 @@ export default function AdminUserList() {
     fetchAllUsers();
   }, []);
 
-  // 🟢 Thêm user
+  // 🟢 Thêm user (chỉ admin)
   const handleAddUser = async () => {
     if (!newUser.name || !newUser.email)
-      return setMsg("⚠️ Nhập đủ tên và email!");
+      return setMsg("⚠️ Hãy nhập đủ tên và email!");
     try {
       await api.post(USERS_API, newUser);
       setMsg("✅ Thêm user thành công!");
@@ -44,13 +46,13 @@ export default function AdminUserList() {
     }
   };
 
-  // 🟢 Xoá user
+  // 🟢 Xoá user (chỉ admin)
   const handleDelete = async (id) => {
-    if (!window.confirm("Xóa user này?")) return;
+    if (!window.confirm("Bạn chắc chắn muốn xóa user này?")) return;
     try {
       await api.delete(`${USERS_API}/${id}`);
       setUsers((prev) => prev.filter((u) => u._id !== id));
-      setMsg("Xóa user thành công!");
+      setMsg("🗑️ Xóa user thành công!");
       setTimeout(() => setMsg(""), 2000);
     } catch (err) {
       console.error("Lỗi xóa user:", err);
@@ -60,70 +62,86 @@ export default function AdminUserList() {
 
   if (loading) return <p>Đang tải danh sách...</p>;
 
+  // Nếu là user thường, không cho truy cập
+  if (currentUser?.role === "user") {
+    return (
+      <div className="card">
+        <p style={{ color: "gray" }}>
+          ⚠️ Bạn không có quyền truy cập vào trang này.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-      {/* KHUNG TRÁI */}
-      <div
-        style={{
-          width: "280px",
-          backgroundColor: "#1f2733",
-          padding: "20px",
-          borderRadius: "12px",
-          color: "white",
-        }}
-      >
-        <h3>Thêm User mới</h3>
-        <label>Tên</label>
-        <input
-          type="text"
-          placeholder="Nhập tên..."
-          value={newUser.name}
-          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+      {/* 🧩 Bên trái: Form thêm user (chỉ admin) */}
+      {currentUser?.role === "admin" && (
+        <div
           style={{
-            width: "100%",
-            padding: "8px",
-            borderRadius: "6px",
-            background: "#0d1117",
+            width: "280px",
+            backgroundColor: "#1f2733",
+            padding: "20px",
+            borderRadius: "12px",
             color: "white",
-            border: "none",
-            marginTop: "4px",
-          }}
-        />
-        <label style={{ marginTop: "10px" }}>Email</label>
-        <input
-          type="email"
-          placeholder="Nhập email..."
-          value={newUser.email}
-          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-          style={{
-            width: "100%",
-            padding: "8px",
-            borderRadius: "6px",
-            background: "#0d1117",
-            color: "white",
-            border: "none",
-            marginTop: "4px",
-            marginBottom: "10px",
-          }}
-        />
-        <button
-          onClick={handleAddUser}
-          style={{
-            width: "100%",
-            backgroundColor: "#00d061",
-            color: "black",
-            fontWeight: "bold",
-            padding: "10px",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
+            boxShadow: "0 0 8px rgba(0,0,0,0.3)",
           }}
         >
-          Thêm User
-        </button>
-      </div>
+          <h3 style={{ marginBottom: "15px" }}>Thêm User mới</h3>
 
-      {/* KHUNG PHẢI */}
+          <label>Tên</label>
+          <input
+            type="text"
+            placeholder="Nhập tên..."
+            value={newUser.name}
+            onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+            style={{
+              width: "100%",
+              padding: "8px",
+              borderRadius: "6px",
+              background: "#0d1117",
+              color: "white",
+              border: "1px solid #333",
+              marginTop: "4px",
+            }}
+          />
+          <label style={{ marginTop: "10px" }}>Email</label>
+          <input
+            type="email"
+            placeholder="Nhập email..."
+            value={newUser.email}
+            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+            style={{
+              width: "100%",
+              padding: "8px",
+              borderRadius: "6px",
+              background: "#0d1117",
+              color: "white",
+              border: "1px solid #333",
+              marginTop: "4px",
+              marginBottom: "10px",
+            }}
+          />
+          <button
+            onClick={handleAddUser}
+            style={{
+              width: "100%",
+              backgroundColor: "#00d061",
+              color: "black",
+              fontWeight: "bold",
+              padding: "10px",
+              borderRadius: "8px",
+              border: "none",
+              cursor: "pointer",
+              marginTop: "6px",
+            }}
+          >
+            ➕ Thêm User
+          </button>
+        </div>
+      )}
+
+      {/* 🧩 Bên phải: Danh sách user */}
       <div
         style={{
           flex: 1,
@@ -131,9 +149,10 @@ export default function AdminUserList() {
           borderRadius: "12px",
           padding: "20px",
           color: "white",
+          boxShadow: "0 0 8px rgba(0,0,0,0.3)",
         }}
       >
-        <h2>Quản lý Người dùng (Admin)</h2>
+        <h2>Quản lý Người dùng ({currentUser.role === "admin" ? "Admin" : "Moderator"})</h2>
         {msg && <p style={{ color: "#00e676" }}>{msg}</p>}
 
         {users.length === 0 ? (
@@ -153,6 +172,7 @@ export default function AdminUserList() {
                   alignItems: "center",
                 }}
               >
+                {/* Thông tin user */}
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <div
                     style={{
@@ -177,24 +197,35 @@ export default function AdminUserList() {
                           (Admin)
                         </span>
                       )}
+                      {user.role === "moderator" && (
+                        <span style={{ color: "lightblue", fontSize: 12 }}>
+                          (Mod)
+                        </span>
+                      )}
                     </div>
-                    <div style={{ color: "#aaa", fontSize: "13px" }}>{user.email}</div>
+                    <div style={{ color: "#aaa", fontSize: "13px" }}>
+                      {user.email}
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(user._id)}
-                  style={{
-                    backgroundColor: "#e53935",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    padding: "6px 12px",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                  }}
-                >
-                  Xóa
-                </button>
+
+                {/* Nút xóa: chỉ admin được quyền */}
+                {currentUser?.role === "admin" && (
+                  <button
+                    onClick={() => handleDelete(user._id)}
+                    style={{
+                      backgroundColor: "#e53935",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "6px 12px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Xóa
+                  </button>
+                )}
               </li>
             ))}
           </ul>
