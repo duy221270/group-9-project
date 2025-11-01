@@ -31,6 +31,22 @@ exports.protect = async (req, res, next) => {
     res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
+exports.checkRole = (allowedRoles) => {
+  return (req, res, next) => {
+    // Hàm này PHẢI chạy SAU hàm 'protect', vì nó cần req.user
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Kiểm tra xem vai trò của user có nằm trong mảng allowedRoles không
+    if (allowedRoles.includes(req.user.role)) {
+      next(); // Vai trò hợp lệ, cho phép đi tiếp
+    } else {
+      // 403 Forbidden - Bị cấm (đã xác thực nhưng không có quyền)
+      res.status(403).json({ message: `Access denied. Role '${req.user.role}' is not authorized.` });
+    }
+  };
+};
 exports.admin = (req, res, next) => {
   // Hàm này PHẢI chạy SAU hàm 'protect',
   // vì nó cần 'req.user' mà hàm 'protect' đã cung cấp.

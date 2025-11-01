@@ -1,13 +1,11 @@
-// File: backend/routes/user.js
-
 const express = require('express');
 const router = express.Router();
 
-// 1. Import cả 'protect' và 'admin'
-const { protect, admin } = require('../middleware/authMiddleware');
-const { uploadAvatar: uploadAvatarMiddleware } = require('../middleware/uploadMiddleware'); // Import middleware upload
+// 1. Import (Giữ nguyên)
+const { protect, checkRole } = require('../middleware/authMiddleware');
+const { uploadAvatar: uploadAvatarMiddleware } = require('../middleware/uploadMiddleware');
 
-// 2. Import các hàm controllers (giữ nguyên)
+// 2. Import Controllers (Giữ nguyên)
 const {
   getAllUsers,
   createUser,
@@ -18,25 +16,26 @@ const {
   uploadAvatar
 } = require('../controllers/userController.js');
 
-// --- Routes cá nhân (Hoạt động 2 - Giữ nguyên) ---
+// --- Routes cá nhân (Giữ nguyên) ---
 router
   .route('/profile')
   .get(protect, getUserProfile)
   .put(protect, updateUserProfile);
 
 router.post('/upload-avatar', protect, uploadAvatarMiddleware, uploadAvatar);
-// --- Routes ADMIN (Hoạt động 3 - CẬP NHẬT) ---
-// Thêm [protect, admin] vào trước hàm controller.
-// Yêu cầu: Phải đăng nhập (protect) VÀ phải là admin (admin).
 
-// GET /api/users (Danh sách user - yêu cầu của HĐ 3)
-router.get('/users', [protect, admin], getAllUsers);
+// --- Routes ADMIN (SỬA LỖI 404) ---
 
-// DELETE /api/users/:id (Xóa user - yêu cầu của HĐ 3)
-router.delete('/users/:id', [protect, admin], deleteUser);
+// Sửa '/users' thành '/'
+router.get('/', [protect, checkRole(['admin', 'moderator'])], getAllUsers);
 
-// (Bonus: Bảo vệ luôn các route admin khác mà bạn đã có)
-router.post('/users', [protect, admin], createUser);
-router.put('/users/:id', [protect, admin], updateUser);
+// Sửa '/users/:id' thành '/:id'
+router.delete('/:id', [protect, checkRole(['admin'])], deleteUser);
+
+// Sửa '/users' thành '/'
+router.post('/', [protect, checkRole(['admin'])], createUser);
+
+// Sửa '/users/:id' thành '/:id'
+router.put('/:id', [protect, checkRole(['admin', 'moderator'])], updateUser);
 
 module.exports = router;
