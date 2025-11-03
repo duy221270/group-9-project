@@ -1,0 +1,43 @@
+// File: backend/utils/sendEmail.js
+
+const nodemailer = require('nodemailer');
+
+/**
+ * Gửi email bằng Nodemailer
+ * @param {object} options - Các tùy chọn email
+ * @param {string} options.email - Email của người nhận
+ * @param {string} options.subject - Chủ đề email
+ * @param {string} options.message - Nội dung email (dạng text)
+ */
+const sendEmail = async (options) => {
+  // 1. Tạo một "transporter" (dịch vụ vận chuyển)
+  // Chúng ta dùng Gmail
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USERNAME, // <-- Email của bạn
+      pass: process.env.EMAIL_PASSWORD, // <-- Mật khẩu ứng dụng của bạn
+    },
+  });
+
+  // 2. Định nghĩa các tùy chọn email (mail options)
+  const mailOptions = {
+    from: `Ten Ung Dung Cua Ban <${process.env.EMAIL_USERNAME}>`,
+    to: options.email,
+    subject: options.subject,
+    text: options.message,
+    // html: "<b>Bạn cũng có thể gửi HTML</b>"
+  };
+
+  // 3. Gửi email
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully');
+  } catch (error) {
+    console.error('Error sending email:', error);
+    // Ném lỗi để hàm gọi (forgotPassword) có thể bắt
+    throw new Error('Email could not be sent');
+  }
+};
+
+module.exports = sendEmail;
