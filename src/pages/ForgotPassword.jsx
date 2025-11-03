@@ -1,64 +1,43 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import api from "../api/axiosConfig";
 
-// Receives apiUrl prop from App.js (e.g., '/api/auth')
-function ForgotPassword({ apiUrl }) {
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+export default function ForgotPassword() {
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
+    setMsg("");
     setLoading(true);
     try {
-      // POST to the forgot-password endpoint defined in the backend
-      const res = await axios.post(`${apiUrl}/forgot-password`, { email });
-      setMessage(res.data.message || 'Yêu cầu reset mật khẩu đã được gửi vào email của bạn!');
-      setEmail(''); // Clear email field on success
+      const res = await api.post("/auth/forgot-password", { email });
+      setMsg(res.data.message || "✅ Đã gửi email đặt lại mật khẩu!");
     } catch (err) {
-      console.error('Lỗi khi gửi yêu cầu quên mật khẩu:', err);
-      setError(err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+      setMsg("❌ " + (err.response?.data?.message || "Lỗi gửi email"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="card" style={{ maxWidth: 400, margin: 'auto' }}>
+    <div className="card" style={{ maxWidth: 400, margin: "50px auto", textAlign: "center" }}>
       <h2>Quên mật khẩu</h2>
-      <p style={{ marginBottom: '15px', color: 'var(--muted)' }}>
-        Nhập email của bạn để nhận link đặt lại mật khẩu.
-      </p>
-      <form onSubmit={handleSubmit} className="form">
-        <label>
-          Email:
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="input" // Use consistent class names if defined in App.css
-            disabled={loading}
-          />
-        </label>
-        <button
-          type="submit"
-          className="btn btn-primary" // Use consistent class names
-          style={{ marginTop: '10px' }}
-          disabled={loading}
-        >
-          {loading ? 'Đang gửi...' : 'Gửi yêu cầu'}
+      <p>Nhập email bạn đã đăng ký để nhận liên kết đặt lại mật khẩu.</p>
+      <form onSubmit={handleSubmit} style={{ marginTop: 20 }}>
+        <input
+          type="email"
+          required
+          placeholder="Nhập email..."
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ width: "100%", padding: 10, borderRadius: 5, marginBottom: 10 }}
+        />
+        <button className="btn" type="submit" disabled={loading} style={{ width: "100%" }}>
+          {loading ? "Đang gửi..." : "Gửi liên kết đặt lại"}
         </button>
       </form>
-      {/* Display Success Message */}
-      {message && <p style={{ marginTop: '15px', color: 'var(--accent)', textAlign: 'center' }}>{message}</p>}
-      {/* Display Error Message */}
-      {error && <p style={{ marginTop: '15px', color: 'var(--danger)', textAlign: 'center' }}>{error}</p>}
+      {msg && <p style={{ marginTop: 12, color: "var(--accent)" }}>{msg}</p>}
     </div>
   );
 }
-
-export default ForgotPassword;

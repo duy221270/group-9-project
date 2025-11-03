@@ -20,8 +20,11 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import AdminUserList from "./pages/AdminUserList";
+
+// 🟢 Thêm 2 dòng mới
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+
 import "./App.css";
 
 const safeParse = (text) => {
@@ -120,6 +123,7 @@ function App() {
                 <Link to="/register" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Đăng ký
                 </Link>
+                {/* 🟢 Thêm link “Quên mật khẩu” */}
                 <Link to="/forgot-password" style={{ color: "var(--accent)" }}>
                   Quên mật khẩu
                 </Link>
@@ -130,8 +134,11 @@ function App() {
 
         {/* ROUTES */}
         <Routes>
+          {/* Public */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* 🟢 Thêm 2 route mới */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
 
@@ -159,6 +166,7 @@ function App() {
             }
           />
 
+          {/* Fallback */}
           <Route
             path="*"
             element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
