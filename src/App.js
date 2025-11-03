@@ -24,7 +24,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import "./App.css";
 
-// --- helper parse JSON an toàn
 const safeParse = (text) => {
   try {
     if (!text || typeof text !== "string") return null;
@@ -39,20 +38,21 @@ function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const currentUser = useSelector(selectUser);
 
-  // Bootstrap Redux state từ localStorage (an toàn)
-  useEffect(() => {
+  // 🟢 Bootstrap Redux state từ localStorage
+  const loadUserFromLocal = () => {
     const savedUser = safeParse(localStorage.getItem("user"));
     const accessToken = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
     if (savedUser && accessToken) {
-      dispatch(
-        setLogin({
-          user: savedUser,
-          accessToken,
-          refreshToken: refreshToken || null,
-        })
-      );
+      dispatch(setLogin({ user: savedUser, accessToken, refreshToken: refreshToken || null }));
     }
+  };
+
+  useEffect(() => {
+    loadUserFromLocal();
+    // 🟢 Nghe event storage để sync lại avatar sau khi upload
+    window.addEventListener("storage", loadUserFromLocal);
+    return () => window.removeEventListener("storage", loadUserFromLocal);
   }, [dispatch]);
 
   // 🔹 Nút Đăng xuất
@@ -64,10 +64,7 @@ function App() {
           refreshToken: localStorage.getItem("refreshToken"),
         });
       } catch (err) {
-        console.warn(
-          "API logout báo lỗi (bỏ qua):",
-          err?.response?.data || err.message
-        );
+        console.warn("API logout báo lỗi (bỏ qua):", err?.response?.data || err.message);
       } finally {
         dispatch(setLogout());
         navigate("/login");
@@ -92,34 +89,24 @@ function App() {
   const AdminRoute = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (!currentUser) return <div className="card">Đang tải thông tin...</div>;
-    return currentUser.role === "admin" || currentUser.role === "moderator" ? (
-      children
-    ) : (
-      <Navigate to="/" replace />
-    );
+    return currentUser.role === "admin" || currentUser.role === "moderator"
+      ? children
+      : <Navigate to="/" replace />;
   };
 
   return (
     <Router>
       <div className="container">
-        {/* HEADER */}
         <div className="header">
           <h1>Quản Lý User</h1>
           <nav style={{ marginBottom: "20px" }}>
             {isAuthenticated ? (
               <>
-                <Link
-                  to="/"
-                  style={{ marginRight: "15px", color: "var(--text)" }}
-                >
+                <Link to="/" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Profile
                 </Link>
-                {(currentUser?.role === "admin" ||
-                  currentUser?.role === "moderator") && (
-                  <Link
-                    to="/admin/users"
-                    style={{ marginRight: "15px", color: "orange" }}
-                  >
+                {(currentUser?.role === "admin" || currentUser?.role === "moderator") && (
+                  <Link to="/admin/users" style={{ marginRight: "15px", color: "orange" }}>
                     Admin Users
                   </Link>
                 )}
@@ -127,16 +114,10 @@ function App() {
               </>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  style={{ marginRight: "15px", color: "var(--text)" }}
-                >
+                <Link to="/login" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Đăng nhập
                 </Link>
-                <Link
-                  to="/register"
-                  style={{ marginRight: "15px", color: "var(--text)" }}
-                >
+                <Link to="/register" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Đăng ký
                 </Link>
                 <Link to="/forgot-password" style={{ color: "var(--accent)" }}>
@@ -149,14 +130,10 @@ function App() {
 
         {/* ROUTES */}
         <Routes>
-          {/* Public */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route
-            path="/reset-password/:resetToken"
-            element={<ResetPassword />}
-          />
+          <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
 
           {/* Private */}
           <Route
@@ -182,12 +159,9 @@ function App() {
             }
           />
 
-          {/* Fallback */}
           <Route
             path="*"
-            element={
-              <Navigate to={isAuthenticated ? "/" : "/login"} replace />
-            }
+            element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
           />
         </Routes>
       </div>
