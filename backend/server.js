@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors'); // THÊM: import cors
+const logRoutes = require('./routes/logRoutes');
 
 // Import các file routes
 const userRoutes = require('./routes/user.js');
@@ -14,6 +15,7 @@ const app = express();
 // Sử dụng middleware
 app.use(cors()); // THÊM: để cho phép frontend gọi
 app.use(express.json());
+app.use('/api/logs', logRoutes);
 
 const PORT = process.env.PORT || 5000; // Nên dùng port 5000 để tránh trùng React
 

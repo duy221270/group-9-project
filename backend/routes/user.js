@@ -4,6 +4,7 @@ const router = express.Router();
 // 1. Import (Giữ nguyên)
 const { protect, checkRole } = require('../middleware/authMiddleware');
 const { uploadAvatar: uploadAvatarMiddleware } = require('../middleware/uploadMiddleware');
+const logActivity = require('../middleware/logActivity'); // <-- 1. Import
 
 // 2. Import Controllers (Giữ nguyên)
 const {
@@ -20,9 +21,15 @@ const {
 router
   .route('/profile')
   .get(protect, getUserProfile)
-  .put(protect, updateUserProfile);
+  .put(protect, logActivity('UPDATED_USER_PROFILE'), updateUserProfile);
 
-router.post('/upload-avatar', protect, uploadAvatarMiddleware, uploadAvatar);
+router.post(
+  '/upload-avatar',
+  protect,
+  logActivity('UPLOADED_AVATAR'), // <-- Ghi log
+  uploadAvatarMiddleware,
+  uploadAvatar
+);
 
 // --- Routes ADMIN (SỬA LỖI 404) ---
 
