@@ -1,6 +1,8 @@
 // File: backend/routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
+// 1. Import rate limiter
+const { loginLimiter } = require('../middleware/rateLimit');
 
 // 1. Import thêm hàm controller mới
 const {
@@ -14,7 +16,7 @@ const {
 
 // --- Các route cũ ---
 router.post('/signup', signup);
-router.post('/login', login);
+router.post('/login', loginLimiter, login);
 router.post('/logout', logout); // Route này đã đúng (POST) để nhận body
 
 // --- ROUTE MỚI CHO HOẠT ĐỘNG 1 ---
