@@ -20,11 +20,9 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import AdminUserList from "./pages/AdminUserList";
-
-// 🟢 Thêm 2 dòng mới
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
+import AdminLogs from "./pages/AdminLogs"; // 🆕 thêm dòng này
 import "./App.css";
 
 const safeParse = (text) => {
@@ -41,7 +39,6 @@ function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const currentUser = useSelector(selectUser);
 
-  // 🟢 Bootstrap Redux state từ localStorage
   const loadUserFromLocal = () => {
     const savedUser = safeParse(localStorage.getItem("user"));
     const accessToken = localStorage.getItem("accessToken");
@@ -53,12 +50,10 @@ function App() {
 
   useEffect(() => {
     loadUserFromLocal();
-    // 🟢 Nghe event storage để sync lại avatar sau khi upload
     window.addEventListener("storage", loadUserFromLocal);
     return () => window.removeEventListener("storage", loadUserFromLocal);
   }, [dispatch]);
 
-  // 🔹 Nút Đăng xuất
   const LogoutButton = () => {
     const navigate = useNavigate();
     const handleLogout = async () => {
@@ -67,7 +62,7 @@ function App() {
           refreshToken: localStorage.getItem("refreshToken"),
         });
       } catch (err) {
-        console.warn("API logout báo lỗi (bỏ qua):", err?.response?.data || err.message);
+        console.warn("API logout lỗi:", err?.response?.data || err.message);
       } finally {
         dispatch(setLogout());
         navigate("/login");
@@ -84,11 +79,9 @@ function App() {
     );
   };
 
-  // 🔐 Route bảo vệ
   const PrivateRoute = ({ children }) =>
     isAuthenticated ? children : <Navigate to="/login" replace />;
 
-  // 🎯 AdminRoute cho cả admin và moderator
   const AdminRoute = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (!currentUser) return <div className="card">Đang tải thông tin...</div>;
@@ -109,9 +102,15 @@ function App() {
                   Profile
                 </Link>
                 {(currentUser?.role === "admin" || currentUser?.role === "moderator") && (
-                  <Link to="/admin/users" style={{ marginRight: "15px", color: "orange" }}>
-                    Admin Users
-                  </Link>
+                  <>
+                    <Link to="/admin/users" style={{ marginRight: "15px", color: "orange" }}>
+                      Admin Users
+                    </Link>
+                    {/* 🆕 thêm link đến trang log */}
+                    <Link to="/admin/logs" style={{ marginRight: "15px", color: "#26a69a" }}>
+                      Logs
+                    </Link>
+                  </>
                 )}
                 <LogoutButton />
               </>
@@ -123,7 +122,6 @@ function App() {
                 <Link to="/register" style={{ marginRight: "15px", color: "var(--text)" }}>
                   Đăng ký
                 </Link>
-                {/* 🟢 Thêm link “Quên mật khẩu” */}
                 <Link to="/forgot-password" style={{ color: "var(--accent)" }}>
                   Quên mật khẩu
                 </Link>
@@ -134,15 +132,11 @@ function App() {
 
         {/* ROUTES */}
         <Routes>
-          {/* Public */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
-          {/* 🟢 Thêm 2 route mới */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
 
-          {/* Private */}
           <Route
             path="/"
             element={
@@ -154,7 +148,18 @@ function App() {
             }
           />
 
-          {/* Admin & Moderator */}
+          {/* 🆕 Route Logs cho admin */}
+          <Route
+            path="/admin/logs"
+            element={
+              <AdminRoute>
+                <div className="card">
+                  <AdminLogs />
+                </div>
+              </AdminRoute>
+            }
+          />
+
           <Route
             path="/admin/users"
             element={
@@ -166,7 +171,6 @@ function App() {
             }
           />
 
-          {/* Fallback */}
           <Route
             path="*"
             element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
