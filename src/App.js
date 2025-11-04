@@ -6,6 +6,7 @@ import {
   Navigate,
   Link,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -22,9 +23,10 @@ import Profile from "./pages/Profile";
 import AdminUserList from "./pages/AdminUserList";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import AdminLogs from "./pages/AdminLogs"; // 🆕 thêm dòng này
+import AdminLogs from "./pages/AdminLogs"; // 🆕 Logs trang quản trị
 import "./App.css";
 
+// 🧩 Hàm parse JSON an toàn
 const safeParse = (text) => {
   try {
     if (!text || typeof text !== "string") return null;
@@ -34,17 +36,112 @@ const safeParse = (text) => {
   }
 };
 
+// 🧩 Header hiển thị có điều kiện (ẩn ở login, register, forgot)
+function ConditionalHeader() {
+  const location = useLocation();
+  const hideHeaderPaths = ["/login", "/register", "/forgot-password"];
+  if (hideHeaderPaths.includes(location.pathname)) return null;
+  return (
+    <div className="header">
+      <h1>🧩 Quản Lý Người Dùng</h1>
+      <nav style={{ marginBottom: "20px" }}>
+        <AuthNav />
+      </nav>
+    </div>
+  );
+}
+
+// 🧩 Thanh điều hướng logic
+function AuthNav() {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const currentUser = useSelector(selectUser);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout", {
+        refreshToken: localStorage.getItem("refreshToken"),
+      });
+    } catch (err) {
+      console.warn("API logout lỗi:", err?.response?.data || err.message);
+    } finally {
+      dispatch(setLogout());
+      navigate("/login");
+    }
+  };
+
+  if (isAuthenticated) {
+    return (
+      <>
+        <Link to="/" style={{ marginRight: 15, color: "var(--text)" }}>
+          Profile
+        </Link>
+        {(currentUser?.role === "admin" || currentUser?.role === "moderator") && (
+          <>
+            <Link
+              to="/admin/users"
+              style={{ marginRight: 15, color: "orange" }}
+            >
+              Admin Users
+            </Link>
+            <Link
+              to="/admin/logs"
+              style={{ marginRight: 15, color: "#26a69a" }}
+            >
+              Logs
+            </Link>
+          </>
+        )}
+        <button
+          onClick={handleLogout}
+          className="btn btn-sm"
+          style={{
+            background: "var(--danger)",
+            marginLeft: "8px",
+            padding: "5px 10px",
+          }}
+        >
+          Đăng xuất
+        </button>
+      </>
+    );
+  }
+
+  // Nếu chưa đăng nhập
+  return (
+    <>
+      <Link to="/login" style={{ marginRight: 15, color: "var(--text)" }}>
+        Đăng nhập
+      </Link>
+      <Link to="/register" style={{ marginRight: 15, color: "var(--text)" }}>
+        Đăng ký
+      </Link>
+      <Link to="/forgot-password" style={{ color: "var(--accent)" }}>
+        Quên mật khẩu
+      </Link>
+    </>
+  );
+}
+
 function App() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const currentUser = useSelector(selectUser);
 
+  // 🧩 Load user khi reload trang
   const loadUserFromLocal = () => {
     const savedUser = safeParse(localStorage.getItem("user"));
     const accessToken = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
     if (savedUser && accessToken) {
-      dispatch(setLogin({ user: savedUser, accessToken, refreshToken: refreshToken || null }));
+      dispatch(
+        setLogin({
+          user: savedUser,
+          accessToken,
+          refreshToken: refreshToken || null,
+        })
+      );
     }
   };
 
@@ -54,34 +151,11 @@ function App() {
     return () => window.removeEventListener("storage", loadUserFromLocal);
   }, [dispatch]);
 
-  const LogoutButton = () => {
-    const navigate = useNavigate();
-    const handleLogout = async () => {
-      try {
-        await api.post("/auth/logout", {
-          refreshToken: localStorage.getItem("refreshToken"),
-        });
-      } catch (err) {
-        console.warn("API logout lỗi:", err?.response?.data || err.message);
-      } finally {
-        dispatch(setLogout());
-        navigate("/login");
-      }
-    };
-    return (
-      <button
-        onClick={handleLogout}
-        className="btn btn-sm"
-        style={{ background: "var(--danger)" }}
-      >
-        Đăng xuất
-      </button>
-    );
-  };
-
+  // 🔐 Route chỉ cho người đã đăng nhập
   const PrivateRoute = ({ children }) =>
     isAuthenticated ? children : <Navigate to="/login" replace />;
 
+  // 🎯 Route chỉ cho admin/moderator
   const AdminRoute = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (!currentUser) return <div className="card">Đang tải thông tin...</div>;
@@ -93,50 +167,21 @@ function App() {
   return (
     <Router>
       <div className="container">
-        <div className="header">
-          <h1>Quản Lý User</h1>
-          <nav style={{ marginBottom: "20px" }}>
-            {isAuthenticated ? (
-              <>
-                <Link to="/" style={{ marginRight: "15px", color: "var(--text)" }}>
-                  Profile
-                </Link>
-                {(currentUser?.role === "admin" || currentUser?.role === "moderator") && (
-                  <>
-                    <Link to="/admin/users" style={{ marginRight: "15px", color: "orange" }}>
-                      Admin Users
-                    </Link>
-                    {/* 🆕 thêm link đến trang log */}
-                    <Link to="/admin/logs" style={{ marginRight: "15px", color: "#26a69a" }}>
-                      Logs
-                    </Link>
-                  </>
-                )}
-                <LogoutButton />
-              </>
-            ) : (
-              <>
-                <Link to="/login" style={{ marginRight: "15px", color: "var(--text)" }}>
-                  Đăng nhập
-                </Link>
-                <Link to="/register" style={{ marginRight: "15px", color: "var(--text)" }}>
-                  Đăng ký
-                </Link>
-                <Link to="/forgot-password" style={{ color: "var(--accent)" }}>
-                  Quên mật khẩu
-                </Link>
-              </>
-            )}
-          </nav>
-        </div>
+        {/* 🧭 Header hiển thị có điều kiện */}
+        <ConditionalHeader />
 
-        {/* ROUTES */}
+        {/* 🧭 Các routes */}
         <Routes>
+          {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
+          <Route
+            path="/reset-password/:resetToken"
+            element={<ResetPassword />}
+          />
 
+          {/* Private route (user) */}
           <Route
             path="/"
             element={
@@ -148,18 +193,7 @@ function App() {
             }
           />
 
-          {/* 🆕 Route Logs cho admin */}
-          <Route
-            path="/admin/logs"
-            element={
-              <AdminRoute>
-                <div className="card">
-                  <AdminLogs />
-                </div>
-              </AdminRoute>
-            }
-          />
-
+          {/* Admin & Moderator */}
           <Route
             path="/admin/users"
             element={
@@ -171,6 +205,18 @@ function App() {
             }
           />
 
+          <Route
+            path="/admin/logs"
+            element={
+              <AdminRoute>
+                <div className="card">
+                  <AdminLogs />
+                </div>
+              </AdminRoute>
+            }
+          />
+
+          {/* Fallback */}
           <Route
             path="*"
             element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
