@@ -1,3 +1,4 @@
+// src/store/authSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 // ✅ Hàm đọc JSON an toàn từ localStorage
