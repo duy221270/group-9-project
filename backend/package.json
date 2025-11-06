@@ -105,7 +105,7 @@
     "wrappy": "^1.0.2"
   },
   "scripts": {
-    "start": "nodemon server.js"
+  "start": "node server.js" 
   },
   "keywords": [],
   "author": "",
