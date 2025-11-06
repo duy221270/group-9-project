@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 .App {
   text-align: center;
 }
@@ -37,7 +37,7 @@
     transform: rotate(360deg);
   }
 }
-=======
+
 :root {
   --bg: #0f172a;
   --card: #1f2937;
@@ -99,4 +99,4 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: system
 }
 .name { font-weight: 600; }
 .email { color: var(--muted); font-size: 14px; }
->>>>>>> origin/feature/redux-protected
+ origin/feature/redux-protected
