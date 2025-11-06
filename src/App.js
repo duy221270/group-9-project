@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState } from 'react';
 import UserList from "./components/UserList";
 import AddUser from "./components/AddUser";
@@ -18,7 +17,7 @@ function App() {
       <h1>Quản lý User</h1>
       <AddUser onUserAdded={handleUserAdded} />
       <UserList users={users} setUsers={setUsers} />
-=======
+
 import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -47,7 +46,7 @@ import ResetPassword from "./pages/ResetPassword";
 import AdminLogs from "./pages/AdminLogs"; // 🆕 Logs trang quản trị
 import "./App.css";
 
-// 🧩 Hàm parse JSON an toàn
+//  Hàm parse JSON an toàn
 const safeParse = (text) => {
   try {
     if (!text || typeof text !== "string") return null;
@@ -57,7 +56,7 @@ const safeParse = (text) => {
   }
 };
 
-// 🧩 Header hiển thị có điều kiện (ẩn ở login, register, forgot)
+//  Header hiển thị có điều kiện (ẩn ở login, register, forgot)
 function ConditionalHeader() {
   const location = useLocation();
   const hideHeaderPaths = ["/login", "/register", "/forgot-password"];
@@ -68,15 +67,15 @@ function ConditionalHeader() {
       <nav style={{ marginBottom: "20px" }}>
         <AuthNav />
       </nav>
->>>>>>> origin/feature/redux-protected
+ origin/feature/redux-protected
     </div>
   );
 }
 
-<<<<<<< HEAD
+
 export default App;
-=======
-// 🧩 Thanh điều hướng logic
+
+//  Thanh điều hướng logic
 function AuthNav() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const currentUser = useSelector(selectUser);
@@ -154,7 +153,7 @@ function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const currentUser = useSelector(selectUser);
 
-  // 🧩 Load user khi reload trang
+  //  Load user khi reload trang
   const loadUserFromLocal = () => {
     const savedUser = safeParse(localStorage.getItem("user"));
     const accessToken = localStorage.getItem("accessToken");
@@ -176,11 +175,11 @@ function App() {
     return () => window.removeEventListener("storage", loadUserFromLocal);
   }, [dispatch]);
 
-  // 🔐 Route chỉ cho người đã đăng nhập
+  //  Route chỉ cho người đã đăng nhập
   const PrivateRoute = ({ children }) =>
     isAuthenticated ? children : <Navigate to="/login" replace />;
 
-  // 🎯 Route chỉ cho admin/moderator
+  //  Route chỉ cho admin/moderator
   const AdminRoute = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (!currentUser) return <div className="card">Đang tải thông tin...</div>;
@@ -253,4 +252,4 @@ function App() {
 }
 
 export default App;
->>>>>>> origin/feature/redux-protected
+ origin/feature/redux-protected
