@@ -1,6 +1,8 @@
+// src/api/axiosConfig.js
 import axios from "axios";
 
-const API_ORIGIN = process.env.REACT_APP_API_ORIGIN || "http://localhost:5000";
+// Đảm bảo REACT_APP_API_ORIGIN được thiết lập trong Environment Variables
+const API_ORIGIN = process.env.REACT_APP_API_URL || "http://localhost:5000"; // Đổi tên biến môi trường thành REACT_APP_API_URL cho nhất quán
 const API_BASE = `${API_ORIGIN}/api`;
 
 const api = axios.create({
