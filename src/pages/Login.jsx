@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../api/axiosConfig";
-import { setLogin } from "../store/authSlice";
+import api from "../api/axiosConfig"; // Đảm bảo đường dẫn này đúng
+import { setLogin } from "../store/authSlice"; // Đảm bảo đường dẫn này đúng
 
 function Login() {
   const dispatch = useDispatch();
