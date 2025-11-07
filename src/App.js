@@ -1,3 +1,24 @@
+<<<<<<< HEAD
+import React, { useState } from 'react';
+import UserList from "./components/UserList";
+import AddUser from "./components/AddUser";
+import './App.css';
+import './App.css';
+import './App.css';
+
+function App() {
+  const [users, setUsers] = useState([]);
+
+  const handleUserAdded = (newUser) => {
+    setUsers([...users, newUser]);
+  };
+
+  return (
+    <div className="App">
+      <h1>Quản lý User</h1>
+      <AddUser onUserAdded={handleUserAdded} />
+      <UserList users={users} setUsers={setUsers} />
+=======
 import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -47,10 +68,14 @@ function ConditionalHeader() {
       <nav style={{ marginBottom: "20px" }}>
         <AuthNav />
       </nav>
+>>>>>>> origin/feature/redux-protected
     </div>
   );
 }
 
+<<<<<<< HEAD
+export default App;
+=======
 // 🧩 Thanh điều hướng logic
 function AuthNav() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
@@ -228,3 +253,4 @@ function App() {
 }
 
 export default App;
+>>>>>>> origin/feature/redux-protected
